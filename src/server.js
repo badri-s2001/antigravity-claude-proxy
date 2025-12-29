@@ -59,6 +59,20 @@ function parseError(error) {
     let errorType = 'api_error';
     let statusCode = 500;
     let errorMessage = error.message;
+    let errorInfo = {};
+
+    if (error?.code === 'MODEL_OR_PROJECT_NOT_FOUND') {
+        errorType = 'invalid_request_error';
+        statusCode = 404;
+        errorMessage = `Model or project not found for model "${error.model}".`;
+        errorInfo = {
+            model: error.model,
+            account: error.account,
+            project: error.project,
+            endpoint: error.endpoint
+        };
+        return { errorType, statusCode, errorMessage, errorInfo };
+    }
 
     if (error.message.includes('401') || error.message.includes('UNAUTHENTICATED')) {
         errorType = 'authentication_error';
@@ -93,7 +107,7 @@ function parseError(error) {
         errorMessage = 'Permission denied. Check your Antigravity license.';
     }
 
-    return { errorType, statusCode, errorMessage };
+    return { errorType, statusCode, errorMessage, errorInfo };
 }
 
 // Request logging middleware
@@ -470,11 +484,11 @@ app.post('/v1/messages', async (req, res) => {
             } catch (streamError) {
                 console.error('[API] Stream error:', streamError);
 
-                const { errorType, errorMessage } = parseError(streamError);
+                const { errorType, errorMessage, errorInfo } = parseError(streamError);
 
                 res.write(`event: error\ndata: ${JSON.stringify({
                     type: 'error',
-                    error: { type: errorType, message: errorMessage }
+                    error: { type: errorType, message: errorMessage, ...errorInfo }
                 })}\n\n`);
                 res.end();
             }
@@ -488,7 +502,7 @@ app.post('/v1/messages', async (req, res) => {
     } catch (error) {
         console.error('[API] Error:', error);
 
-        let { errorType, statusCode, errorMessage } = parseError(error);
+        let { errorType, statusCode, errorMessage, errorInfo } = parseError(error);
 
         // For auth errors, try to refresh token
         if (errorType === 'authentication_error') {
@@ -510,7 +524,7 @@ app.post('/v1/messages', async (req, res) => {
             console.log('[API] Headers already sent, writing error as SSE event');
             res.write(`event: error\ndata: ${JSON.stringify({
                 type: 'error',
-                error: { type: errorType, message: errorMessage }
+                error: { type: errorType, message: errorMessage, ...errorInfo }
             })}\n\n`);
             res.end();
         } else {
@@ -518,7 +532,8 @@ app.post('/v1/messages', async (req, res) => {
                 type: 'error',
                 error: {
                     type: errorType,
-                    message: errorMessage
+                    message: errorMessage,
+                    ...errorInfo
                 }
             });
         }
