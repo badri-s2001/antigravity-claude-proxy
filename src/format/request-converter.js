@@ -5,9 +5,8 @@
 
 import {
     GEMINI_MAX_OUTPUT_TOKENS,
-    getModelFamily,
-    isThinkingModel
 } from '../constants.js';
+import { getModelFamily, isThinkingModel } from '../utils/model-utils.js';
 import { convertContentToParts, convertRole } from './content-converter.js';
 import { sanitizeSchema, cleanSchemaForGemini } from './schema-sanitizer.js';
 import {

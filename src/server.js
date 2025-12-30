@@ -13,6 +13,8 @@ import { REQUEST_BODY_LIMIT } from './constants.js';
 import { AccountManager } from './account-manager.js';
 import { formatDuration } from './utils/helpers.js';
 import { convertOpenAIToInternal, convertToOpenAI, streamToOpenAIFormat } from './format/index.js';
+import { formatOpenAIError, formatOpenAISStreamError, ErrorTypes } from './utils/error-utils.js';
+import { resolveModelAlias } from './utils/model-utils.js';
 
 
 const app = express();
@@ -570,20 +572,15 @@ app.post('/v1/chat/completions', async (req, res) => {
 
         // Validate required fields
         if (!messages || !Array.isArray(messages)) {
-            return res.status(400).json({
-                error: {
-                    message: 'messages is required and must be an array',
-                    type: 'invalid_request_error',
-                    code: 'invalid_messages'
-                }
-            });
+            return res.status(400).json(formatOpenAIError('messages is required and must be an array', ErrorTypes.INVALID_REQUEST, 400));
         }
 
         console.log(`[API:OpenAI] Request for model: ${model || 'default'}, stream: ${!!stream}`);
+        const resolvedModel = resolveModelAlias(model);
 
         // Convert OpenAI request to internal format
         const internalRequest = convertOpenAIToInternal({
-            model,
+            model: resolvedModel,
             messages,
             max_tokens,
             temperature,
@@ -608,7 +605,7 @@ app.post('/v1/chat/completions', async (req, res) => {
                 // Use the streaming generator and convert to OpenAI format
                 const anthropicStream = sendMessageStream(internalRequest, accountManager);
 
-                for await (const chunk of streamToOpenAIFormat(anthropicStream, model || internalRequest.model)) {
+                for await (const chunk of streamToOpenAIFormat(anthropicStream, resolvedModel)) {
                     res.write(chunk);
                     if (res.flush) res.flush();
                 }
@@ -616,21 +613,14 @@ app.post('/v1/chat/completions', async (req, res) => {
 
             } catch (streamError) {
                 console.error('[API:OpenAI] Stream error:', streamError);
-                const errorResponse = {
-                    error: {
-                        message: streamError.message,
-                        type: 'api_error'
-                    }
-                };
-                res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
-                res.write('data: [DONE]\n\n');
+                res.write(formatOpenAISStreamError(streamError));
                 res.end();
             }
 
         } else {
             // Handle non-streaming response
             const anthropicResponse = await sendMessage(internalRequest, accountManager);
-            const openaiResponse = convertToOpenAI(anthropicResponse, model || internalRequest.model);
+            const openaiResponse = convertToOpenAI(anthropicResponse, resolvedModel);
             res.json(openaiResponse);
         }
 

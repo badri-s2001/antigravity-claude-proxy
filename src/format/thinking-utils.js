@@ -479,3 +479,20 @@ export function closeToolLoopForThinking(messages) {
 
     return modified;
 }
+/**
+ * Format thinking content as markdown for display in chat interfaces.
+ * Uses <think> tag for native reasoning rendering in supported UIs.
+ *
+ * @param {string} thinking - The thinking/reasoning content
+ * @returns {string} Formatted markdown
+ */
+export function formatThinkingAsMarkdown(thinking) {
+    if (!thinking) return '';
+    return `<think>\n${thinking}\n</think>\n\n`;
+}
+
+/**
+ * Markers for streaming thinking blocks in markdown
+ */
+export const THINKING_STREAM_START = '<think>\n';
+export const THINKING_STREAM_END = '\n</think>\n\n';

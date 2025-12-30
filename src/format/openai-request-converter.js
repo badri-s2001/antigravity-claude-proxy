@@ -5,9 +5,12 @@
 
 import {
     GEMINI_MAX_OUTPUT_TOKENS,
-    getModelFamily,
-    isThinkingModel
 } from '../constants.js';
+import {
+    getModelFamily,
+    isThinkingModel,
+    resolveModelAlias
+} from '../utils/model-utils.js';
 import { sanitizeSchema, cleanSchemaForGemini } from './schema-sanitizer.js';
 
 /**
@@ -35,6 +38,7 @@ export function convertOpenAIToGoogle(openaiRequest) {
     const modelFamily = getModelFamily(modelName);
     const isClaudeModel = modelFamily === 'claude';
     const isGeminiModel = modelFamily === 'gemini';
+    const isGptModel = modelFamily === 'gpt';
     const isThinking = isThinkingModel(modelName);
 
     const googleRequest = {
@@ -173,7 +177,8 @@ export function convertOpenAIToGoogle(openaiRequest) {
             googleRequest.generationConfig.thinkingConfig = {
                 include_thoughts: true
             };
-        } else if (isGeminiModel) {
+        } else if (isGeminiModel || isGptModel) {
+            // GPT models (like gpt-oss) in Antigravity follow Gemini-style config
             googleRequest.generationConfig.thinkingConfig = {
                 includeThoughts: true,
                 thinkingBudget: 16000
@@ -217,62 +222,7 @@ export function convertOpenAIToGoogle(openaiRequest) {
 }
 
 /**
- * Map model aliases to actual Antigravity model names.
- * Handles cases where Copilot sends custom model IDs.
- *
- * @param {string} modelName - The model name from the request
- * @returns {string} The actual model name to use
- */
-function resolveModelAlias(modelName) {
-    const name = (modelName || '').toLowerCase();
-
-    // Direct matches - return as-is if it's a known model
-    if (name.includes('claude') || name.includes('gemini')) {
-        return modelName;
-    }
-
-    // Alias mappings for custom Copilot model IDs
-    const aliases = {
-        // Opus aliases
-        'opus': 'claude-opus-4-5-thinking',
-        'opus-proxy': 'claude-opus-4-5-thinking',
-        'antigravity-opus': 'claude-opus-4-5-thinking',
-        'claude-opus': 'claude-opus-4-5-thinking',
-
-        // Sonnet aliases
-        'sonnet': 'claude-sonnet-4-5-thinking',
-        'sonnet-proxy': 'claude-sonnet-4-5-thinking',
-        'antigravity-sonnet': 'claude-sonnet-4-5-thinking',
-        'claude-sonnet': 'claude-sonnet-4-5-thinking',
-
-        // Gemini aliases
-        'gemini': 'gemini-3-flash',
-        'gemini-proxy': 'gemini-3-flash',
-        'flash': 'gemini-3-flash',
-        'gemini-pro': 'gemini-3-pro-high',
-
-        // Generic fallbacks
-        'test': 'claude-sonnet-4-5-thinking',
-        'default': 'claude-sonnet-4-5-thinking'
-    };
-
-    // Check for alias match
-    if (aliases[name]) {
-        console.log(`[OpenAI Converter] Mapped model alias '${modelName}' -> '${aliases[name]}'`);
-        return aliases[name];
-    }
-
-    // If unknown, default to claude-sonnet
-    console.log(`[OpenAI Converter] Unknown model '${modelName}', defaulting to claude-sonnet-4-5-thinking`);
-    return 'claude-sonnet-4-5-thinking';
-}
-
-/**
  * Convert OpenAI request to internal Anthropic-like format for the cloudcode-client
- * This is the preferred approach since cloudcode-client already handles conversion
- *
- * @param {Object} openaiRequest - OpenAI Chat Completions format request
- * @returns {Object} Internal request format compatible with cloudcode-client
  */
 export function convertOpenAIToInternal(openaiRequest) {
     const {

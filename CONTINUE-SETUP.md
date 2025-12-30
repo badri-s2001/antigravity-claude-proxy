@@ -101,10 +101,15 @@ The proxy automatically maps these model names:
 |------------|---------|
 | `opus-proxy` | `claude-opus-4-5-thinking` |
 | `sonnet-proxy` | `claude-sonnet-4-5-thinking` |
-| `gemini-proxy` | `gemini-3-flash` |
-| `opus`, `claude-opus` | `claude-opus-4-5-thinking` |
-| `sonnet`, `claude-sonnet` | `claude-sonnet-4-5-thinking` |
-| `flash`, `gemini` | `gemini-3-flash` |
+| `sonnet-no-thinking` | `claude-sonnet-4-5` |
+| `gemini-proxy`, `flash` | `gemini-3-flash` |
+| `gemini-pro-high` | `gemini-3-pro-high` |
+| `gemini-pro-low` | `gemini-3-pro-low` |
+| `gpt-oss` | `gpt-oss-120b-medium` |
+
+### Deep Reasoning Support
+
+The proxy natively supports the "Deep Reasoning" capabilities of models like Claude 3.7 Sonnet, Gemini 3 Flash/Pro, and GPT-OSS:
 
 ## Troubleshooting
 

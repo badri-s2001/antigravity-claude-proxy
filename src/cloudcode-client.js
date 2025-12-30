@@ -15,10 +15,9 @@ import {
     ANTIGRAVITY_HEADERS,
     MAX_RETRIES,
     MAX_WAIT_BEFORE_ERROR_MS,
-    MIN_SIGNATURE_LENGTH,
-    getModelFamily,
-    isThinkingModel
+    MIN_SIGNATURE_LENGTH
 } from './constants.js';
+import { getModelFamily, isThinkingModel } from './utils/model-utils.js';
 import {
     convertAnthropicToGoogle,
     convertGoogleToAnthropic
@@ -502,8 +501,8 @@ async function parseThinkingSSEResponse(response, originalModel) {
                     }
                 }
             } catch (e) {
-                    console.log('[CloudCode] SSE parse warning:', e.message, 'Raw:', jsonText.slice(0, 100));
-                }
+                console.log('[CloudCode] SSE parse warning:', e.message, 'Raw:', jsonText.slice(0, 100));
+            }
         }
     }
 

@@ -95,37 +95,6 @@ export const GEMINI_SKIP_SIGNATURE = 'skip_thought_signature_validator';
 // Cache TTL for Gemini thoughtSignatures (2 hours)
 export const GEMINI_SIGNATURE_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 
-/**
- * Get the model family from model name (dynamic detection, no hardcoded list).
- * @param {string} modelName - The model name from the request
- * @returns {'claude' | 'gemini' | 'unknown'} The model family
- */
-export function getModelFamily(modelName) {
-    const lower = (modelName || '').toLowerCase();
-    if (lower.includes('claude')) return 'claude';
-    if (lower.includes('gemini')) return 'gemini';
-    return 'unknown';
-}
-
-/**
- * Check if a model supports thinking/reasoning output.
- * @param {string} modelName - The model name from the request
- * @returns {boolean} True if the model supports thinking blocks
- */
-export function isThinkingModel(modelName) {
-    const lower = (modelName || '').toLowerCase();
-    // Claude thinking models have "thinking" in the name
-    if (lower.includes('claude') && lower.includes('thinking')) return true;
-    // Gemini thinking models: explicit "thinking" in name, OR gemini version 3+
-    if (lower.includes('gemini')) {
-        if (lower.includes('thinking')) return true;
-        // Check for gemini-3 or higher (e.g., gemini-3, gemini-3.5, gemini-4, etc.)
-        const versionMatch = lower.match(/gemini-(\d+)/);
-        if (versionMatch && parseInt(versionMatch[1], 10) >= 3) return true;
-    }
-    return false;
-}
-
 // Google OAuth configuration (from opencode-antigravity-auth)
 export const OAUTH_CONFIG = {
     clientId: '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com',
@@ -162,8 +131,6 @@ export default {
     GEMINI_MAX_OUTPUT_TOKENS,
     GEMINI_SKIP_SIGNATURE,
     GEMINI_SIGNATURE_CACHE_TTL_MS,
-    getModelFamily,
-    isThinkingModel,
     OAUTH_CONFIG,
     OAUTH_REDIRECT_URI
 };
