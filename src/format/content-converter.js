@@ -112,14 +112,29 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
         } else if (block.type === 'tool_result') {
             // Convert tool_result to functionResponse (Google format)
             let responseContent = block.content;
+            let imageParts = [];
+
             if (typeof responseContent === 'string') {
                 responseContent = { result: responseContent };
             } else if (Array.isArray(responseContent)) {
+                // Extract images from tool results first (e.g., from Read tool reading image files)
+                for (const item of responseContent) {
+                    if (item.type === 'image' && item.source?.type === 'base64') {
+                        imageParts.push({
+                            inlineData: {
+                                mimeType: item.source.media_type,
+                                data: item.source.data
+                            }
+                        });
+                    }
+                }
+
+                // Extract text content
                 const texts = responseContent
                     .filter(c => c.type === 'text')
                     .map(c => c.text)
                     .join('\n');
-                responseContent = { result: texts };
+                responseContent = { result: texts || (imageParts.length > 0 ? 'Image attached' : '') };
             }
 
             const functionResponse = {
@@ -133,6 +148,9 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
             }
 
             parts.push({ functionResponse });
+
+            // Add any images from the tool result as separate parts
+            parts.push(...imageParts);
         } else if (block.type === 'thinking') {
             // Handle thinking blocks - only those with valid signatures
             if (block.signature && block.signature.length >= MIN_SIGNATURE_LENGTH) {
