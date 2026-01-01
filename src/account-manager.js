@@ -352,13 +352,9 @@ export class AccountManager {
         const cooldownMs = resetMs || this.#settings.cooldownDurationMs || DEFAULT_COOLDOWN_MS;
         account.rateLimitResetTime = Date.now() + cooldownMs;
 
-        account.rateLimitResetTime = Date.now() + cooldownMs;
-
         logger.warn(
             `[AccountManager] Rate limited: ${email}. Available in ${formatDuration(cooldownMs)}`
         );
-
-        this.saveToDisk();
 
         this.saveToDisk();
     }
@@ -376,9 +372,6 @@ export class AccountManager {
         account.invalidReason = reason;
         account.invalidAt = Date.now();
 
-        account.invalidReason = reason;
-        account.invalidAt = Date.now();
-
         logger.error(
             `[AccountManager] ⚠ Account INVALID: ${email}`
         );
@@ -388,8 +381,6 @@ export class AccountManager {
         logger.error(
             `[AccountManager]   Run 'npm run accounts' to re-authenticate this account`
         );
-
-        this.saveToDisk();
 
         this.saveToDisk();
     }
@@ -529,7 +520,6 @@ export class AccountManager {
                     return data.cloudaicompanionProject;
                 }
                 if (data.cloudaicompanionProject?.id) {
-                    return data.cloudaicompanionProject.id;
                     return data.cloudaicompanionProject.id;
                 }
             } catch (error) {
