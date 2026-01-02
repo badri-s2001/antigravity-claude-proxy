@@ -18,15 +18,9 @@ import { AccountManager } from './account-manager/index.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 
-// Import fallback flag (set by command line args in index.js)
-let FALLBACK_ENABLED = false;
-try {
-    // Dynamic import to avoid circular dependency
-    const indexModule = await import('./index.js');
-    FALLBACK_ENABLED = indexModule.FALLBACK_ENABLED || false;
-} catch (e) {
-    // If index.js hasn't exported it yet, fallback is disabled
-}
+// Parse fallback flag directly from command line args to avoid circular dependency
+const args = process.argv.slice(2);
+const FALLBACK_ENABLED = args.includes('--fallback') || process.env.FALLBACK === 'true';
 
 const app = express();
 
