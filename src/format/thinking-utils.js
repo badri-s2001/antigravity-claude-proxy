@@ -480,3 +480,101 @@ export function closeToolLoopForThinking(messages) {
 
     return modified;
 }
+
+/**
+ * Check if the last assistant message in a conversation starts with a thinking block.
+ * Claude API requires this when thinking is enabled.
+ *
+ * @param {Array<Object>} messages - Array of messages
+ * @returns {boolean} True if last assistant message starts with thinking
+ */
+function lastAssistantStartsWithThinking(messages) {
+    if (!Array.isArray(messages) || messages.length === 0) return true;
+
+    // Find the last assistant message
+    for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg.role === 'assistant' || msg.role === 'model') {
+            const content = msg.content || msg.parts || [];
+            if (!Array.isArray(content) || content.length === 0) return false;
+
+            // Check if first block is a thinking block
+            const firstBlock = content[0];
+            return isThinkingPart(firstBlock);
+        }
+    }
+
+    // No assistant messages found - that's fine
+    return true;
+}
+
+/**
+ * Ensure the last assistant message starts with a thinking block.
+ * Claude API requires this when thinking is enabled.
+ *
+ * If the last assistant message doesn't start with thinking:
+ * - If it has thinking blocks but not at the start, they will be reordered by reorderAssistantContent
+ * - If it has NO thinking blocks at all, we need to add a synthetic one
+ *
+ * This function checks for the case where the last assistant has no thinking at all.
+ *
+ * @param {Array<Object>} messages - Array of messages (Anthropic format)
+ * @returns {Array<Object>} Messages with last assistant having thinking block
+ */
+export function ensureLastAssistantHasThinking(messages) {
+    if (!Array.isArray(messages) || messages.length === 0) return messages;
+
+    // Find the last assistant message index
+    let lastAssistantIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'assistant' || messages[i].role === 'model') {
+            lastAssistantIdx = i;
+            break;
+        }
+    }
+
+    if (lastAssistantIdx === -1) return messages; // No assistant messages
+
+    const lastAssistant = messages[lastAssistantIdx];
+    const content = lastAssistant.content || lastAssistant.parts || [];
+
+    // Check if it has ANY thinking block (signed or not)
+    const hasAnyThinking = Array.isArray(content) && content.some(block => isThinkingPart(block));
+
+    if (hasAnyThinking) {
+        // Has thinking but maybe not at start - reorderAssistantContent will fix this
+        return messages;
+    }
+
+    // No thinking blocks at all - we need to add a placeholder
+    // Create a modified copy of messages
+    const modified = [...messages];
+    const modifiedAssistant = { ...lastAssistant };
+
+    // Prepend a placeholder thinking block
+    const placeholderThinking = {
+        type: 'thinking',
+        thinking: '[Continuing from previous context]'
+        // Note: No signature - this will be handled appropriately by the API
+        // The API may accept unsigned thinking for the placeholder case
+    };
+
+    if (Array.isArray(modifiedAssistant.content)) {
+        modifiedAssistant.content = [placeholderThinking, ...modifiedAssistant.content];
+    } else if (Array.isArray(modifiedAssistant.parts)) {
+        modifiedAssistant.parts = [placeholderThinking, ...modifiedAssistant.parts];
+    } else if (typeof modifiedAssistant.content === 'string') {
+        modifiedAssistant.content = [
+            placeholderThinking,
+            { type: 'text', text: modifiedAssistant.content }
+        ];
+    } else {
+        modifiedAssistant.content = [placeholderThinking];
+    }
+
+    modified[lastAssistantIdx] = modifiedAssistant;
+    logger.debug('[ThinkingUtils] Added placeholder thinking block to last assistant message');
+
+    return modified;
+}
+

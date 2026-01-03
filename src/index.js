@@ -16,6 +16,22 @@ const isDebug = args.includes('--debug') || process.env.DEBUG === 'true';
 // Initialize logger
 logger.setDebug(isDebug);
 
+// Global handlers for unhandled rejections and exceptions
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('[Process] Unhandled Promise Rejection:', reason);
+    if (isDebug) {
+        console.error('Unhandled rejection at:', promise, 'reason:', reason);
+    }
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error('[Process] Uncaught Exception:', error.message);
+    if (isDebug) {
+        console.error(error);
+    }
+    // Don't exit - try to keep server running
+});
+
 if (isDebug) {
     logger.debug('Debug mode enabled');
 }
@@ -65,7 +81,7 @@ app.listen(PORT, () => {
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
   `);
-    
+
     logger.success(`Server started successfully on port ${PORT}`);
     if (isDebug) {
         logger.warn('Running in DEBUG mode - verbose logs enabled');

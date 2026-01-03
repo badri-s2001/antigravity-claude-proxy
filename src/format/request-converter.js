@@ -122,6 +122,33 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         googleRequest.contents = filterUnsignedThinkingBlocks(googleRequest.contents);
     }
 
+    // For Claude thinking models, check if last model message has a thinking block
+    // Claude API requires: "a final assistant message must start with a thinking block"
+    // If missing, we must DISABLE thinking for this request to avoid the error
+    let shouldDisableThinking = false;
+    if (isClaudeModel && isThinking && googleRequest.contents.length > 0) {
+        // Find the last model message
+        for (let i = googleRequest.contents.length - 1; i >= 0; i--) {
+            const content = googleRequest.contents[i];
+            if (content.role === 'model') {
+                // Check if first part is a thinking block
+                const firstPart = content.parts && content.parts[0];
+                const hasThinking = firstPart && (
+                    firstPart.thought === true ||
+                    firstPart.type === 'thinking' ||
+                    firstPart.thinking !== undefined
+                );
+
+                if (!hasThinking) {
+                    // Last model message lacks thinking - must disable thinking for this request
+                    shouldDisableThinking = true;
+                    logger.warn('[RequestConverter] Last model message lacks thinking block - disabling thinking for this request');
+                }
+                break;
+            }
+        }
+    }
+
     // Generation config
     if (max_tokens) {
         googleRequest.generationConfig.maxOutputTokens = max_tokens;
@@ -140,7 +167,8 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     }
 
     // Enable thinking for thinking models (Claude and Gemini 3+)
-    if (isThinking) {
+    // Skip thinking config for Claude if last model message lacks thinking block
+    if (isThinking && !(isClaudeModel && shouldDisableThinking)) {
         if (isClaudeModel) {
             // Claude thinking config
             const thinkingConfig = {
@@ -151,6 +179,15 @@ export function convertAnthropicToGoogle(anthropicRequest) {
             const thinkingBudget = thinking?.budget_tokens;
             if (thinkingBudget) {
                 thinkingConfig.thinking_budget = thinkingBudget;
+
+                // Ensure max_tokens > budget_tokens (Claude API requirement)
+                const currentMaxTokens = googleRequest.generationConfig.maxOutputTokens || 0;
+                if (currentMaxTokens <= thinkingBudget) {
+                    const newMaxTokens = thinkingBudget + 1;
+                    googleRequest.generationConfig.maxOutputTokens = newMaxTokens;
+                    logger.debug(`[RequestConverter] Adjusted max_tokens from ${currentMaxTokens} to ${newMaxTokens} (must be > budget_tokens: ${thinkingBudget})`);
+                }
+
                 logger.debug(`[RequestConverter] Claude thinking enabled with budget: ${thinkingBudget}`);
             } else {
                 logger.debug('[RequestConverter] Claude thinking enabled (no budget specified)');
