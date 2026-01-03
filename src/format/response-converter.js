@@ -6,6 +6,7 @@
 import crypto from 'crypto';
 import { MIN_SIGNATURE_LENGTH } from '../constants.js';
 import { cacheSignature } from './signature-cache.js';
+import { cacheThinkingSignature } from './thinking-signature-cache.js';
 
 /**
  * Convert Google Generative AI response to Anthropic Messages API format
@@ -32,6 +33,11 @@ export function convertGoogleToAnthropic(googleResponse, model) {
             // Handle thinking blocks
             if (part.thought === true) {
                 const signature = part.thoughtSignature || '';
+
+                // Cache thinking content → signature for future requests
+                if (part.text && signature && signature.length >= MIN_SIGNATURE_LENGTH) {
+                    cacheThinkingSignature(part.text, signature);
+                }
 
                 // Include thinking blocks in the response for Claude Code
                 anthropicContent.push({

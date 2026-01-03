@@ -122,29 +122,61 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         googleRequest.contents = filterUnsignedThinkingBlocks(googleRequest.contents);
     }
 
-    // For Claude thinking models, check if last model message has a thinking block
-    // Claude API requires: "a final assistant message must start with a thinking block"
-    // If missing, we must DISABLE thinking for this request to avoid the error
+    // For Claude thinking models, check if the assistant turn has a thinking block
+    // Claude API requires: "if thinking is enabled, the final assistant turn must start with a thinking block"
+    // 
+    // IMPORTANT: An assistant "turn" includes the entire tool use loop:
+    //   [assistant: thinking, tool_use] ← turn starts here, has thinking ✅
+    //   [user: tool_result]
+    //   [assistant: tool_use]           ← still same turn, doesn't need thinking
+    //   [user: tool_result]
+    //   [assistant: text]               ← turn ends here
+    //
+    // So we need to find the START of the current assistant turn, not the last message.
     let shouldDisableThinking = false;
     if (isClaudeModel && isThinking && googleRequest.contents.length > 0) {
-        // Find the last model message
+        // Find the start of the current assistant turn
+        // Walk backwards to find where the current turn began
+        let turnStartIndex = -1;
+        let inToolLoop = false;
+
         for (let i = googleRequest.contents.length - 1; i >= 0; i--) {
             const content = googleRequest.contents[i];
-            if (content.role === 'model') {
-                // Check if first part is a thinking block
-                const firstPart = content.parts && content.parts[0];
-                const hasThinking = firstPart && (
-                    firstPart.thought === true ||
-                    firstPart.type === 'thinking' ||
-                    firstPart.thinking !== undefined
-                );
 
-                if (!hasThinking) {
-                    // Last model message lacks thinking - must disable thinking for this request
-                    shouldDisableThinking = true;
-                    logger.warn('[RequestConverter] Last model message lacks thinking block - disabling thinking for this request');
+            if (content.role === 'user') {
+                // Check if this is a tool_result (part of the current turn)
+                const hasToolResult = content.parts?.some(p =>
+                    p.functionResponse !== undefined || p.type === 'tool_result'
+                );
+                if (hasToolResult) {
+                    inToolLoop = true;
+                    continue; // Keep looking back
+                } else {
+                    // This is a regular user message, turn started after this
+                    break;
                 }
-                break;
+            } else if (content.role === 'model') {
+                turnStartIndex = i;
+                if (!inToolLoop) {
+                    break; // Found the last assistant message (not in a tool loop)
+                }
+                // In a tool loop, keep looking for the turn start
+            }
+        }
+
+        // Check if the turn start has a thinking block
+        if (turnStartIndex >= 0) {
+            const turnStart = googleRequest.contents[turnStartIndex];
+            const firstPart = turnStart.parts && turnStart.parts[0];
+            const hasThinking = firstPart && (
+                firstPart.thought === true ||
+                firstPart.type === 'thinking' ||
+                firstPart.thinking !== undefined
+            );
+
+            if (!hasThinking) {
+                shouldDisableThinking = true;
+                logger.warn('[RequestConverter] Assistant turn lacks thinking block at start - disabling thinking for this request');
             }
         }
     }
@@ -202,27 +234,25 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     if (isThinking && !(isClaudeModel && shouldDisableThinking)) {
         if (isClaudeModel) {
             // Claude thinking config
+            // NOTE: Cloud Code API requires thinking_budget to actually return thinking blocks
             const thinkingConfig = {
                 include_thoughts: true
             };
 
-            // Only set thinking_budget if explicitly provided
-            const thinkingBudget = thinking?.budget_tokens;
-            if (thinkingBudget) {
-                thinkingConfig.thinking_budget = thinkingBudget;
+            // Use provided budget or default to 16000
+            // Without thinking_budget, Cloud Code API won't return thinking blocks!
+            const thinkingBudget = thinking?.budget_tokens || 16000;
+            thinkingConfig.thinking_budget = thinkingBudget;
 
-                // Ensure max_tokens > budget_tokens (Claude API requirement)
-                const currentMaxTokens = googleRequest.generationConfig.maxOutputTokens || 0;
-                if (currentMaxTokens <= thinkingBudget) {
-                    const newMaxTokens = thinkingBudget + 1;
-                    googleRequest.generationConfig.maxOutputTokens = newMaxTokens;
-                    logger.debug(`[RequestConverter] Adjusted max_tokens from ${currentMaxTokens} to ${newMaxTokens} (must be > budget_tokens: ${thinkingBudget})`);
-                }
-
-                logger.debug(`[RequestConverter] Claude thinking enabled with budget: ${thinkingBudget}`);
-            } else {
-                logger.debug('[RequestConverter] Claude thinking enabled (no budget specified)');
+            // Ensure max_tokens > budget_tokens (Claude API requirement)
+            const currentMaxTokens = googleRequest.generationConfig.maxOutputTokens || 0;
+            if (currentMaxTokens <= thinkingBudget) {
+                const newMaxTokens = thinkingBudget + 1;
+                googleRequest.generationConfig.maxOutputTokens = newMaxTokens;
+                logger.debug(`[RequestConverter] Adjusted max_tokens from ${currentMaxTokens} to ${newMaxTokens} (must be > budget_tokens: ${thinkingBudget})`);
             }
+
+            logger.debug(`[RequestConverter] Claude thinking enabled with budget: ${thinkingBudget}${thinking?.budget_tokens ? '' : ' (default)'}`);
 
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         } else if (isGeminiModel) {

@@ -5,6 +5,7 @@
 
 import { MIN_SIGNATURE_LENGTH } from '../constants.js';
 import { logger } from '../utils/logger.js';
+import { getCachedThinkingSignature } from './thinking-signature-cache.js';
 
 /**
  * Check if a part is a thinking block
@@ -74,6 +75,7 @@ export function sanitizeAnthropicThinkingBlock(block) {
 
 /**
  * Filter content array, keeping only thinking blocks with valid signatures.
+ * Also attempts to restore signatures from cache for unsigned blocks.
  */
 function filterContentArray(contentArray) {
     const filtered = [];
@@ -95,8 +97,30 @@ function filterContentArray(contentArray) {
             continue;
         }
 
-        // Drop unsigned thinking blocks
-        logger.debug('[ThinkingUtils] Dropping unsigned thinking block');
+        // Try to restore signature from cache for unsigned thinking blocks
+        const thinkingContent = item.thinking || item.text || '';
+        logger.debug(`[ThinkingUtils] Unsigned thinking block found, content length: ${thinkingContent.length}, preview: "${thinkingContent.slice(0, 50)}..."`);
+
+        if (thinkingContent) {
+            const cachedSignature = getCachedThinkingSignature(thinkingContent);
+            if (cachedSignature) {
+                logger.info('[ThinkingUtils] Restored signature from cache in filterContentArray');
+                // Create a new item with the restored signature
+                const restoredItem = {
+                    ...item,
+                    thought: true,
+                    text: thinkingContent,
+                    thoughtSignature: cachedSignature
+                };
+                filtered.push(sanitizeThinkingPart(restoredItem));
+                continue;
+            } else {
+                logger.debug('[ThinkingUtils] No cached signature found for this thinking block');
+            }
+        }
+
+        // Drop unsigned thinking blocks (no cache hit)
+        logger.debug('[ThinkingUtils] Dropping unsigned thinking block (no cache hit)');
     }
 
     return filtered;
@@ -173,6 +197,7 @@ export function restoreThinkingSignatures(content) {
 
     const originalLength = content.length;
     const filtered = [];
+    let restoredCount = 0;
 
     for (const block of content) {
         if (!block || block.type !== 'thinking') {
@@ -180,15 +205,37 @@ export function restoreThinkingSignatures(content) {
             continue;
         }
 
-        // Keep blocks with valid signatures (>= MIN_SIGNATURE_LENGTH chars), sanitized
+        // If block already has a valid signature, keep it
         if (block.signature && block.signature.length >= MIN_SIGNATURE_LENGTH) {
             filtered.push(sanitizeAnthropicThinkingBlock(block));
+            continue;
         }
-        // Unsigned thinking blocks are dropped
+
+        // Try to restore signature from cache
+        const thinkingContent = block.thinking || '';
+        const cachedSignature = getCachedThinkingSignature(thinkingContent);
+
+        if (cachedSignature) {
+            // Restore the signature from cache
+            restoredCount++;
+            filtered.push(sanitizeAnthropicThinkingBlock({
+                type: 'thinking',
+                thinking: thinkingContent,
+                signature: cachedSignature
+            }));
+        }
+        // Blocks without signatures (and no cache hit) are dropped
+    }
+
+    if (restoredCount > 0) {
+        logger.info(`[ThinkingUtils] Restored ${restoredCount} thinking signature(s) from cache`);
     }
 
     if (filtered.length < originalLength) {
-        logger.debug(`[ThinkingUtils] Dropped ${originalLength - filtered.length} unsigned thinking block(s)`);
+        const dropped = originalLength - filtered.length;
+        if (dropped > 0) {
+            logger.debug(`[ThinkingUtils] Dropped ${dropped} unsigned thinking block(s) (no cache hit)`);
+        }
     }
 
     return filtered;

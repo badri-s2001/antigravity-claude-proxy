@@ -8,6 +8,7 @@
 import crypto from 'crypto';
 import { MIN_SIGNATURE_LENGTH } from '../constants.js';
 import { cacheSignature } from '../format/signature-cache.js';
+import { cacheThinkingSignature } from '../format/thinking-signature-cache.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -23,6 +24,7 @@ export async function* streamSSEResponse(response, originalModel) {
     let blockIndex = 0;
     let currentBlockType = null;
     let currentThinkingSignature = '';
+    let currentThinkingContent = ''; // Accumulate thinking content for caching
     let inputTokens = 0;
     let outputTokens = 0;
     let cacheReadTokens = 0;
@@ -101,12 +103,16 @@ export async function* streamSSEResponse(response, originalModel) {
                             }
                             currentBlockType = 'thinking';
                             currentThinkingSignature = '';
+                            currentThinkingContent = ''; // Reset for new thinking block
                             yield {
                                 type: 'content_block_start',
                                 index: blockIndex,
                                 content_block: { type: 'thinking', thinking: '' }
                             };
                         }
+
+                        // Accumulate thinking content for caching
+                        currentThinkingContent += text;
 
                         if (signature && signature.length >= MIN_SIGNATURE_LENGTH) {
                             currentThinkingSignature = signature;
@@ -127,12 +133,17 @@ export async function* streamSSEResponse(response, originalModel) {
                         // Handle regular text
                         if (currentBlockType !== 'text') {
                             if (currentBlockType === 'thinking' && currentThinkingSignature) {
+                                // Cache the thinking content → signature mapping before transitioning
+                                if (currentThinkingContent && currentThinkingSignature) {
+                                    cacheThinkingSignature(currentThinkingContent, currentThinkingSignature);
+                                }
                                 yield {
                                     type: 'content_block_delta',
                                     index: blockIndex,
                                     delta: { type: 'signature_delta', signature: currentThinkingSignature }
                                 };
                                 currentThinkingSignature = '';
+                                currentThinkingContent = '';
                             }
                             if (currentBlockType !== null) {
                                 yield { type: 'content_block_stop', index: blockIndex };
@@ -159,12 +170,17 @@ export async function* streamSSEResponse(response, originalModel) {
                         const functionCallSignature = part.thoughtSignature || '';
 
                         if (currentBlockType === 'thinking' && currentThinkingSignature) {
+                            // Cache the thinking content → signature mapping before transitioning
+                            if (currentThinkingContent && currentThinkingSignature) {
+                                cacheThinkingSignature(currentThinkingContent, currentThinkingSignature);
+                            }
                             yield {
                                 type: 'content_block_delta',
                                 index: blockIndex,
                                 delta: { type: 'signature_delta', signature: currentThinkingSignature }
                             };
                             currentThinkingSignature = '';
+                            currentThinkingContent = '';
                         }
                         if (currentBlockType !== null) {
                             yield { type: 'content_block_stop', index: blockIndex };
@@ -260,6 +276,10 @@ export async function* streamSSEResponse(response, originalModel) {
         // Close any open block
         if (currentBlockType !== null) {
             if (currentBlockType === 'thinking' && currentThinkingSignature) {
+                // Cache the thinking content → signature mapping before closing
+                if (currentThinkingContent && currentThinkingSignature) {
+                    cacheThinkingSignature(currentThinkingContent, currentThinkingSignature);
+                }
                 yield {
                     type: 'content_block_delta',
                     index: blockIndex,

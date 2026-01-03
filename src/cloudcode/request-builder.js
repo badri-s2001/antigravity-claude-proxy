@@ -27,6 +27,11 @@ export function buildCloudCodeRequest(anthropicRequest, projectId) {
     // Use stable session ID derived from first user message for cache continuity
     googleRequest.sessionId = deriveSessionId(anthropicRequest);
 
+    // Debug: log thinkingConfig
+    if (googleRequest.generationConfig?.thinkingConfig) {
+        console.log('[DEBUG] thinkingConfig being sent:', JSON.stringify(googleRequest.generationConfig.thinkingConfig));
+    }
+
     const payload = {
         project: projectId,
         model: model,
