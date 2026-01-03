@@ -149,6 +149,37 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         }
     }
 
+    // Remove thinking blocks when:
+    // 1. shouldDisableThinking is true (thinking model but last message lacks thinking)
+    // 2. NOT a thinking model but history contains thinking blocks (user switched models)
+    // API error: "When thinking is disabled, an assistant message cannot contain thinking"
+    const shouldRemoveThinkingBlocks = shouldDisableThinking || (isClaudeModel && !isThinking);
+    if (shouldRemoveThinkingBlocks && googleRequest.contents.length > 0) {
+        let removedCount = 0;
+        for (const content of googleRequest.contents) {
+            if (content.role === 'model' && content.parts) {
+                const originalLength = content.parts.length;
+                // Filter out thinking blocks
+                content.parts = content.parts.filter(part => {
+                    const isThinkingPart = (
+                        part.thought === true ||
+                        part.type === 'thinking' ||
+                        part.thinking !== undefined
+                    );
+                    return !isThinkingPart;
+                });
+                removedCount += originalLength - content.parts.length;
+                // Ensure at least one part remains
+                if (content.parts.length === 0) {
+                    content.parts = [{ text: '' }];
+                }
+            }
+        }
+        if (removedCount > 0) {
+            logger.debug(`[RequestConverter] Removed ${removedCount} thinking block(s) from messages`);
+        }
+    }
+
     // Generation config
     if (max_tokens) {
         googleRequest.generationConfig.maxOutputTokens = max_tokens;
