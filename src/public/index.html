@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Proxy Dashboard</title>
+    <link rel="stylesheet" href="/public/style.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Antigravity Claude Proxy</h1>
+            <div class="status-badge" id="connection-status">Connecting...</div>
+        </header>
+
+        <div class="grid">
+            <!-- System Status Card -->
+            <div class="card">
+                <h2>System Status</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <span class="label">Uptime</span>
+                        <span class="value" id="uptime">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Proxy Version</span>
+                        <span class="value" id="version">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Total Accounts</span>
+                        <span class="value" id="total-accounts">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Active Accounts</span>
+                        <span class="value success" id="active-accounts">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Card -->
+            <div class="card">
+                <h2>Configuration</h2>
+                <div class="config-info">
+                    <div class="config-row">
+                        <span class="label">Proxy Endpoint</span>
+                        <code class="value">http://localhost:8080/v1</code>
+                    </div>
+                    <div class="config-row">
+                        <span class="label">Mode</span>
+                        <span class="value">Load Balanced (Sticky)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Health Table -->
+            <div class="card full-width">
+                <h2>Account Health</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Status</th>
+                                <th>Last Used</th>
+                                <th>Active Limits</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accounts-table-body">
+                            <tr>
+                                <td colspan="4" class="loading">Loading accounts...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Antigravity Claude Proxy &bull; <a href="https://github.com/badri-s2001/antigravity-claude-proxy"
+                    target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="/public/app.js"></script>
+</body>
+
+</html>
