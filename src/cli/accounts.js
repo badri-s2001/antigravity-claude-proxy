@@ -22,6 +22,7 @@ import net from 'net';
 import { ACCOUNT_CONFIG_PATH, DEFAULT_PORT, MAX_ACCOUNTS } from '../constants.js';
 import {
     getAuthorizationUrl,
+    extractCodeFromInput,
     startCallbackServer,
     completeOAuthFlow,
     refreshAccessToken,
@@ -228,6 +229,66 @@ async function addAccount(existingAccounts) {
 }
 
 /**
+ * Add a new account via OAuth with manual code input (no browser mode)
+ * For use on remote servers without desktop environment
+ */
+async function addAccountNoBrowser(existingAccounts, rl) {
+    console.log('\n=== Add Google Account (No Browser Mode) ===\n');
+
+    // Generate authorization URL
+    const { url, verifier, state } = getAuthorizationUrl();
+
+    console.log('Please open the following URL in your browser:\n');
+    console.log(`   ${url}\n`);
+    console.log('After signing in and authorizing, your browser will try to redirect to');
+    console.log('localhost and show "Unable to connect" or similar error.');
+    console.log('This is expected! Copy the FULL URL from your browser\'s address bar.\n');
+    console.log('The URL will look like:');
+    console.log('   http://localhost:51121/oauth-callback?code=4/xxx&state=xxx\n');
+
+    const input = await rl.question('Paste the callback URL or authorization code: ');
+
+    try {
+        const { code, state: inputState } = extractCodeFromInput(input);
+
+        // Warn if state doesn't match (but still proceed)
+        if (inputState && inputState !== state) {
+            console.log('\n⚠ Warning: State parameter mismatch. Proceeding anyway...');
+        }
+
+        console.log('\nExchanging authorization code for tokens...');
+        const result = await completeOAuthFlow(code, verifier);
+
+        // Check if account already exists
+        const existing = existingAccounts.find(a => a.email === result.email);
+        if (existing) {
+            console.log(`\n⚠ Account ${result.email} already exists. Updating tokens.`);
+            existing.refreshToken = result.refreshToken;
+            existing.projectId = result.projectId;
+            existing.addedAt = new Date().toISOString();
+            return null; // Don't add duplicate
+        }
+
+        console.log(`\n✓ Successfully authenticated: ${result.email}`);
+        if (result.projectId) {
+            console.log(`  Project ID: ${result.projectId}`);
+        }
+
+        return {
+            email: result.email,
+            refreshToken: result.refreshToken,
+            projectId: result.projectId,
+            addedAt: new Date().toISOString(),
+            isRateLimited: false,
+            rateLimitResetTime: null
+        };
+    } catch (error) {
+        console.error(`\n✗ Authentication failed: ${error.message}`);
+        return null;
+    }
+}
+
+/**
  * Interactive remove accounts flow
  */
 async function interactiveRemove(rl) {
@@ -273,9 +334,15 @@ async function interactiveRemove(rl) {
 
 /**
  * Interactive add accounts flow (Main Menu)
+ * @param {Object} rl - Readline interface
+ * @param {boolean} noBrowser - If true, use manual code input mode
  */
-async function interactiveAdd(rl) {
+async function interactiveAdd(rl, noBrowser = false) {
     const accounts = loadAccounts();
+
+    if (noBrowser) {
+        console.log('\n📋 No-browser mode: You will manually paste the authorization code.\n');
+    }
 
     if (accounts.length > 0) {
         displayAccounts(accounts);
@@ -298,7 +365,11 @@ async function interactiveAdd(rl) {
 
     // Add accounts loop
     while (accounts.length < MAX_ACCOUNTS) {
-        const newAccount = await addAccount(accounts);
+        // Use appropriate add function based on noBrowser flag
+        const newAccount = noBrowser
+            ? await addAccountNoBrowser(accounts, rl)
+            : await addAccount(accounts);
+
         if (newAccount) {
             accounts.push(newAccount);
             // Auto-save after each successful add to prevent data loss
@@ -389,7 +460,10 @@ async function verifyAccounts() {
  */
 async function main() {
     const args = process.argv.slice(2);
-    const command = args[0] || 'add';
+    // Find command (first arg that doesn't start with -)
+    const command = args.find(a => !a.startsWith('-')) || 'add';
+    // Check for --no-browser flag
+    const noBrowser = args.includes('--no-browser');
 
     console.log('╔════════════════════════════════════════╗');
     console.log('║   Antigravity Proxy Account Manager    ║');
@@ -401,7 +475,7 @@ async function main() {
         switch (command) {
             case 'add':
                 await ensureServerStopped();
-                await interactiveAdd(rl);
+                await interactiveAdd(rl, noBrowser);
                 break;
             case 'list':
                 await listAccounts();
@@ -415,11 +489,15 @@ async function main() {
                 break;
             case 'help':
                 console.log('\nUsage:');
-                console.log('  node src/cli/accounts.js add     Add new account(s)');
-                console.log('  node src/cli/accounts.js list    List all accounts');
-                console.log('  node src/cli/accounts.js verify  Verify account tokens');
-                console.log('  node src/cli/accounts.js clear   Remove all accounts');
-                console.log('  node src/cli/accounts.js help    Show this help');
+                console.log('  node src/cli/accounts.js add              Add new account(s)');
+                console.log('  node src/cli/accounts.js add --no-browser Add account(s) without browser');
+                console.log('                                            (for remote servers)');
+                console.log('  node src/cli/accounts.js list             List all accounts');
+                console.log('  node src/cli/accounts.js verify           Verify account tokens');
+                console.log('  node src/cli/accounts.js clear            Remove all accounts');
+                console.log('  node src/cli/accounts.js help             Show this help');
+                console.log('\nOptions:');
+                console.log('  --no-browser    Manual authorization code input (for headless servers)');
                 break;
             case 'remove':
                 await ensureServerStopped();
