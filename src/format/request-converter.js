@@ -16,7 +16,9 @@ import {
     reorderAssistantContent,
     filterUnsignedThinkingBlocks,
     needsThinkingRecovery,
-    closeToolLoopForThinking
+    closeToolLoopForThinking,
+    hasIncompatibleSignatures,
+    stripThinkingForModelSwitch
 } from './thinking-utils.js';
 import { logger } from '../utils/logger.js';
 
@@ -77,13 +79,20 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         }
     }
 
+    // Detect cross-model resume scenario (e.g., started with Claude, resuming with Gemini)
+    // This prevents "Corrupted thought signature" errors by stripping incompatible signatures
+    let processedMessages = messages;
+    if (isThinking && hasIncompatibleSignatures(messages, modelFamily)) {
+        logger.warn(`[RequestConverter] Cross-model resume detected: stripping incompatible ${modelFamily === 'gemini' ? 'Claude' : 'Gemini'} signatures`);
+        processedMessages = stripThinkingForModelSwitch(messages);
+    }
+
     // Apply thinking recovery for Gemini thinking models when needed
     // This handles corrupted tool loops where thinking blocks are stripped
     // Claude models handle this differently and don't need this recovery
-    let processedMessages = messages;
-    if (isGeminiModel && isThinking && needsThinkingRecovery(messages)) {
+    if (isGeminiModel && isThinking && needsThinkingRecovery(processedMessages)) {
         logger.debug('[RequestConverter] Applying thinking recovery for Gemini');
-        processedMessages = closeToolLoopForThinking(messages);
+        processedMessages = closeToolLoopForThinking(processedMessages);
     }
 
     // Convert messages to contents, then filter unsigned thinking blocks
