@@ -11,7 +11,18 @@ import { forceRefresh } from './auth/token-extractor.js';
 import { REQUEST_BODY_LIMIT } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { formatDuration } from './utils/helpers.js';
+
 import { logger } from './utils/logger.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Read version from package.json
+const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url)));
+const PROXY_VERSION = packageJson.version;
 
 const app = express();
 
@@ -52,6 +63,55 @@ async function ensureInitialized() {
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
+
+// Serve dashboard static files
+app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/dashboard/assets', express.static(path.join(__dirname, 'public'))); // Alias for cleaner URLs if needed
+
+// Dashboard redirect
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+/**
+ * Dashboard Status Endpoint
+ * Returns sanitized status for the dashboard
+ */
+app.get('/api/dashboard/status', (req, res) => {
+    try {
+        const amStatus = accountManager.getStatus();
+
+        // Sanitize sensitive info if any (email is public identifier here, so okay)
+        // We create a clean response object
+        const status = {
+            version: PROXY_VERSION,
+            uptime: process.uptime(),
+            timestamp: Date.now(),
+            accounts: {
+                total: amStatus.total,
+                available: amStatus.available,
+                rateLimited: amStatus.rateLimited,
+                invalid: amStatus.invalid,
+                list: amStatus.accounts.map(a => ({
+                    email: a.email,
+                    source: a.source,
+                    lastUsed: a.lastUsed,
+                    isInvalid: a.isInvalid,
+                    invalidReason: a.invalidReason,
+                    hasActiveLimits: Object.values(a.modelRateLimits || {}).some(
+                        l => l.isRateLimited && l.resetTime > Date.now()
+                    ),
+                    modelRateLimits: a.modelRateLimits
+                }))
+            }
+        };
+
+        res.json(status);
+    } catch (error) {
+        logger.error('[API] Dashboard status error:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 /**
  * Parse error message to extract error type, status code, and user-friendly message
@@ -103,7 +163,7 @@ app.use((req, res, next) => {
     // Skip logging for event logging batch unless in debug mode
     if (req.path === '/api/event_logging/batch') {
         if (logger.isDebugEnabled) {
-             logger.debug(`[${req.method}] ${req.path}`);
+            logger.debug(`[${req.method}] ${req.path}`);
         }
     } else {
         logger.info(`[${req.method}] ${req.path}`);
@@ -119,11 +179,11 @@ app.get('/health', async (req, res) => {
     try {
         await ensureInitialized();
         const start = Date.now();
-        
+
         // Get high-level status first
         const status = accountManager.getStatus();
         const allAccounts = accountManager.getAllAccounts();
-        
+
         // Fetch quotas for each account in parallel to get detailed model info
         const accountDetails = await Promise.allSettled(
             allAccounts.map(async (account) => {

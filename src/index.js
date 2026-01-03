@@ -34,7 +34,7 @@ app.listen(PORT, () => {
     // align for 2-space indent (60 chars), align4 for 4-space indent (58 chars)
     const align = (text) => text + ' '.repeat(Math.max(0, 60 - text.length));
     const align4 = (text) => text + ' '.repeat(Math.max(0, 58 - text.length));
-    
+
     // Build Control section dynamically
     let controlSection = '║  Control:                                                    ║\n';
     if (!isDebug) {
@@ -64,6 +64,7 @@ ${controlSection}
 ║    GET  /v1/models           - List available models         ║
 ║    GET  /health              - Health check                  ║
 ║    GET  /account-limits      - Account status & quotas       ║
+║    GET  /dashboard           - Web Dashboard (NEW)           ║
 ║    POST /refresh-token       - Force token refresh           ║
 ║                                                              ║
 ${border}  ${align(`Configuration:`)}${border}
@@ -83,7 +84,7 @@ ${border}    ${align4(`export ANTHROPIC_BASE_URL=http://localhost:${PORT}`)}${bo
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
   `);
-    
+
     logger.success(`Server started successfully on port ${PORT}`);
     if (isDebug) {
         logger.warn('Running in DEBUG mode - verbose logs enabled');

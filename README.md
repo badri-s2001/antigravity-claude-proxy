@@ -322,6 +322,15 @@ antigravity-claude-proxy accounts
 # Choose "Re-authenticate" for the invalid account
 ```
 
+### WebSearch Tool Not Working
+
+The WebSearch tool in Claude Code requires Anthropic's native search API, which is not available through this proxy. This is a known limitation.
+
+**Workarounds:**
+- Use the `Read` tool with specific URLs to fetch page content
+- Manually search and paste results into the conversation
+- Use external browser-based search tools
+
 ---
 
 ## Safety, Usage, and Risk Notices

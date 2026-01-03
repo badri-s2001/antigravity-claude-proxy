@@ -480,3 +480,107 @@ export function closeToolLoopForThinking(messages) {
 
     return modified;
 }
+
+// ============================================================================
+// Cross-Model Signature Detection & Handling
+// ============================================================================
+
+/**
+ * Detect the signature format used in a message.
+ * Claude uses 'signature' field, Gemini uses 'thoughtSignature' field.
+ *
+ * @param {Object} message - Message to analyze
+ * @returns {'claude'|'gemini'|null} The signature format, or null if no signatures found
+ */
+function detectSignatureFormat(message) {
+    const content = message.content || message.parts || [];
+    if (!Array.isArray(content)) return null;
+
+    for (const block of content) {
+        if (!block || typeof block !== 'object') continue;
+
+        // Claude-style thinking block with signature
+        if (block.type === 'thinking' && block.signature && block.signature.length >= MIN_SIGNATURE_LENGTH) {
+            return 'claude';
+        }
+
+        // Gemini-style thought block with thoughtSignature
+        if (block.thought === true && block.thoughtSignature && block.thoughtSignature.length >= MIN_SIGNATURE_LENGTH) {
+            return 'gemini';
+        }
+
+        // Tool use with thoughtSignature (Gemini 3+ style)
+        if (block.type === 'tool_use' && block.thoughtSignature && block.thoughtSignature.length >= MIN_SIGNATURE_LENGTH) {
+            return 'gemini';
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Check if message history contains thinking signatures from a different model family.
+ * Used to detect when a user is resuming a conversation started with a different model.
+ *
+ * @param {Array<Object>} messages - Array of messages
+ * @param {string} targetModelFamily - Target model family: 'claude' or 'gemini'
+ * @returns {boolean} True if incompatible signatures are detected
+ */
+export function hasIncompatibleSignatures(messages, targetModelFamily) {
+    if (!Array.isArray(messages) || messages.length === 0) return false;
+    if (targetModelFamily !== 'claude' && targetModelFamily !== 'gemini') return false;
+
+    for (const message of messages) {
+        if (message.role !== 'assistant' && message.role !== 'model') continue;
+
+        const signatureFormat = detectSignatureFormat(message);
+        if (signatureFormat && signatureFormat !== targetModelFamily) {
+            logger.debug(`[ThinkingUtils] Found ${signatureFormat} signatures, but target is ${targetModelFamily}`);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Strip all thinking blocks and signatures from messages for cross-model resume.
+ * This prevents "Corrupted thought signature" errors when switching between Claude and Gemini.
+ *
+ * @param {Array<Object>} messages - Array of messages
+ * @returns {Array<Object>} Messages with all thinking blocks removed
+ */
+export function stripThinkingForModelSwitch(messages) {
+    return messages.map(msg => {
+        const content = msg.content || msg.parts;
+        if (!Array.isArray(content)) return msg;
+
+        const filtered = content.filter(block => {
+            if (!block || typeof block !== 'object') return true;
+
+            // Remove thinking blocks
+            if (isThinkingPart(block)) {
+                return false;
+            }
+
+            return true;
+        }).map(block => {
+            // Also strip thoughtSignature from tool_use blocks
+            if (block && block.type === 'tool_use' && block.thoughtSignature) {
+                const { thoughtSignature, ...rest } = block;
+                return rest;
+            }
+            return block;
+        });
+
+        // Ensure we have at least one content block
+        const finalContent = filtered.length > 0 ? filtered : [{ type: 'text', text: '' }];
+
+        if (msg.content) {
+            return { ...msg, content: finalContent };
+        } else if (msg.parts) {
+            return { ...msg, parts: finalContent };
+        }
+        return msg;
+    });
+}
