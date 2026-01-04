@@ -1,0 +1,44 @@
+{
+  "_comment": "Antigravity Claude Proxy Configuration",
+  "_instructions": [
+    "Copy this file to ~/.config/antigravity-proxy/config.json",
+    "Or edit values in .env file for environment-based configuration",
+    "Restart server after making changes"
+  ],
+
+  "port": 8080,
+  "debug": false,
+  "logLevel": "info",
+
+  "maxRetries": 5,
+  "retryBaseMs": 1000,
+  "retryMaxMs": 30000,
+
+  "defaultCooldownMs": 60000,
+  "maxWaitBeforeErrorMs": 120000,
+
+  "tokenCacheTtlMs": 300000,
+  "persistTokenCache": false,
+
+  "requestTimeoutMs": 300000,
+  "maxAccounts": 10,
+
+  "_profiles": {
+    "development": {
+      "debug": true,
+      "logLevel": "debug",
+      "maxRetries": 3
+    },
+    "production": {
+      "debug": false,
+      "logLevel": "info",
+      "maxRetries": 5,
+      "persistTokenCache": true
+    },
+    "high-performance": {
+      "maxRetries": 10,
+      "retryMaxMs": 60000,
+      "tokenCacheTtlMs": 600000
+    }
+  }
+}
