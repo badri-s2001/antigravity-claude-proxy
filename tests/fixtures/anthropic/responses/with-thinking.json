@@ -1,0 +1,25 @@
+{
+  "id": "msg_02thinking123abc456",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "The user is asking about the capital of Japan. I know that Tokyo is the capital and largest city of Japan. It has been the de facto capital since 1868 when the Emperor moved there from Kyoto. Let me provide a comprehensive answer.",
+      "signature": "abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890"
+    },
+    {
+      "type": "text",
+      "text": "The capital of Japan is Tokyo. It has been Japan's political and economic center since 1868 when Emperor Meiji moved the imperial court there from Kyoto. Tokyo is also the most populous metropolitan area in the world."
+    }
+  ],
+  "model": "claude-sonnet-4-5-thinking",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 15,
+    "output_tokens": 156,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0
+  }
+}

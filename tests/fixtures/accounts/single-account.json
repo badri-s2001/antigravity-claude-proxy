@@ -1,0 +1,20 @@
+{
+  "accounts": [
+    {
+      "email": "test-user@example.com",
+      "source": "oauth",
+      "dbPath": null,
+      "refreshToken": "1//0abc123def456-token-example",
+      "projectId": "cloudcode-project-123",
+      "addedAt": 1704067200000,
+      "lastUsed": 1704153600000,
+      "isInvalid": false,
+      "invalidReason": null,
+      "modelRateLimits": {}
+    }
+  ],
+  "settings": {
+    "cooldownDurationMs": 60000
+  },
+  "activeIndex": 0
+}

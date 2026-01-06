@@ -1,0 +1,21 @@
+{
+  "response": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "This response is wrapped in a response object, which is how some Cloud Code responses are structured."
+            }
+          ]
+        },
+        "finishReason": "STOP"
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 25,
+      "candidatesTokenCount": 22,
+      "cachedContentTokenCount": 0
+    }
+  }
+}

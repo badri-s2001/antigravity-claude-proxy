@@ -1,0 +1,20 @@
+{
+  "id": "msg_07stopseq456mno",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Here is the list of prime numbers less than 20:\n\n2, 3, 5, 7, 11, 13, 17, 19\n\nEND"
+    }
+  ],
+  "model": "gemini-3-flash",
+  "stop_reason": "stop_sequence",
+  "stop_sequence": "END",
+  "usage": {
+    "input_tokens": 18,
+    "output_tokens": 42,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0
+  }
+}

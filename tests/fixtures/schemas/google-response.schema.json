@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "google-response.schema.json",
+  "title": "Google Cloud Code API Response",
+  "description": "Schema for Google/Gemini Cloud Code API response format",
+  "type": "object",
+  "properties": {
+    "response": {
+      "$ref": "#/$defs/responseBody",
+      "description": "Wrapped response object (optional)"
+    },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidate" },
+      "description": "Response candidates"
+    },
+    "usageMetadata": {
+      "$ref": "#/$defs/usageMetadata",
+      "description": "Token usage information"
+    }
+  },
+  "$defs": {
+    "responseBody": {
+      "type": "object",
+      "properties": {
+        "candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/candidate" }
+        },
+        "usageMetadata": {
+          "$ref": "#/$defs/usageMetadata"
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "object",
+          "properties": {
+            "parts": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/part" }
+            }
+          }
+        },
+        "finishReason": {
+          "type": "string",
+          "enum": ["STOP", "MAX_TOKENS", "TOOL_USE", "SAFETY", "RECITATION", "OTHER"]
+        }
+      }
+    },
+    "part": {
+      "oneOf": [{ "$ref": "#/$defs/textPart" }, { "$ref": "#/$defs/functionCallPart" }, { "$ref": "#/$defs/functionResponsePart" }]
+    },
+    "textPart": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "thought": { "type": "boolean" },
+        "thoughtSignature": { "type": "string" }
+      }
+    },
+    "functionCallPart": {
+      "type": "object",
+      "required": ["functionCall"],
+      "properties": {
+        "functionCall": {
+          "type": "object",
+          "required": ["name", "args"],
+          "properties": {
+            "name": { "type": "string" },
+            "args": { "type": "object" },
+            "id": { "type": "string" }
+          }
+        },
+        "thoughtSignature": { "type": "string" }
+      }
+    },
+    "functionResponsePart": {
+      "type": "object",
+      "required": ["functionResponse"],
+      "properties": {
+        "functionResponse": {
+          "type": "object",
+          "required": ["name", "response"],
+          "properties": {
+            "name": { "type": "string" },
+            "response": { "type": "object" },
+            "id": { "type": "string" }
+          }
+        }
+      }
+    },
+    "usageMetadata": {
+      "type": "object",
+      "properties": {
+        "promptTokenCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "candidatesTokenCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cachedContentTokenCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

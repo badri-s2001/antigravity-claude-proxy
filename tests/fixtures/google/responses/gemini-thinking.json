@@ -1,0 +1,24 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "I need to analyze this problem carefully. Let me break it down:\n\n1. First, I'll consider the mathematical constraints\n2. Then, I'll apply the relevant formulas\n3. Finally, I'll verify my solution\n\nThis is a complex problem that requires step-by-step reasoning.",
+            "thought": true,
+            "thoughtSignature": "geminithinking1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz"
+          },
+          {
+            "text": "Based on my analysis, the answer is 42. Here's the detailed explanation:\n\nThe problem involves calculating the optimal value given the constraints. By applying the quadratic formula and considering the boundary conditions, we arrive at the solution."
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 100,
+    "candidatesTokenCount": 180,
+    "cachedContentTokenCount": 0
+  }
+}

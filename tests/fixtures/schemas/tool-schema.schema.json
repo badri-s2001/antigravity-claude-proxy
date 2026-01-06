@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tool-schema.schema.json",
+  "title": "Tool Input Schema",
+  "description": "Schema for defining tool input parameters in Anthropic format",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": ["string", "array"],
+      "description": "The JSON type of the parameter"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#" },
+      "description": "Object properties (for type: object)"
+    },
+    "required": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Required property names"
+    },
+    "items": {
+      "oneOf": [{ "$ref": "#" }, { "type": "array", "items": { "$ref": "#" } }],
+      "description": "Array item schema (for type: array)"
+    },
+    "enum": {
+      "type": "array",
+      "description": "Allowed values"
+    },
+    "const": {
+      "description": "Constant value"
+    },
+    "default": {
+      "description": "Default value"
+    },
+    "minimum": {
+      "type": "number",
+      "description": "Minimum value (for numbers)"
+    },
+    "maximum": {
+      "type": "number",
+      "description": "Maximum value (for numbers)"
+    },
+    "minLength": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Minimum string length"
+    },
+    "maxLength": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum string length"
+    },
+    "pattern": {
+      "type": "string",
+      "description": "Regex pattern (for strings)"
+    },
+    "minItems": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Minimum array length"
+    },
+    "maxItems": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum array length"
+    },
+    "additionalProperties": {
+      "oneOf": [{ "type": "boolean" }, { "$ref": "#" }],
+      "description": "Additional properties schema"
+    },
+    "allOf": {
+      "type": "array",
+      "items": { "$ref": "#" },
+      "description": "All schemas must match"
+    },
+    "anyOf": {
+      "type": "array",
+      "items": { "$ref": "#" },
+      "description": "Any schema must match"
+    },
+    "oneOf": {
+      "type": "array",
+      "items": { "$ref": "#" },
+      "description": "Exactly one schema must match"
+    },
+    "$ref": {
+      "type": "string",
+      "description": "Reference to another schema"
+    },
+    "$defs": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#" },
+      "description": "Schema definitions"
+    }
+  }
+}

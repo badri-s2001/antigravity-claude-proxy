@@ -1,0 +1,24 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Let me think about this step by step. The user is asking about the capital of France. Paris has been the capital of France since the 10th century and is the country's largest city. It's known for landmarks like the Eiffel Tower and the Louvre.",
+            "thought": true,
+            "thoughtSignature": "claudethinkingsig1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrs"
+          },
+          {
+            "text": "The capital of France is Paris. It has been the nation's capital since the late 10th century and is home to famous landmarks like the Eiffel Tower, the Louvre Museum, and Notre-Dame Cathedral."
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 20,
+    "candidatesTokenCount": 145,
+    "cachedContentTokenCount": 0
+  }
+}

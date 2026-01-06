@@ -1,0 +1,25 @@
+{
+  "id": "msg_04toolcomplete456def",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "I received the weather data for Tokyo. The temperature is 22 degrees Celsius, it's sunny, and the humidity is 65%. This is pleasant weather. Let me summarize this for the user in a helpful way.",
+      "signature": "toolresultsig1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz12345"
+    },
+    {
+      "type": "text",
+      "text": "The current weather in Tokyo is:\n\n- **Temperature:** 22°C (72°F)\n- **Condition:** Sunny\n- **Humidity:** 65%\n\nIt's a pleasant day in Tokyo with comfortable temperatures and clear skies!"
+    }
+  ],
+  "model": "claude-sonnet-4-5-thinking",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 312,
+    "output_tokens": 134,
+    "cache_read_input_tokens": 200,
+    "cache_creation_input_tokens": 0
+  }
+}

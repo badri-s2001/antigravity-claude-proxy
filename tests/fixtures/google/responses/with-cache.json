@@ -1,0 +1,19 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "This response demonstrates high cache utilization, where most of the input tokens were served from cache."
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 5200,
+    "candidatesTokenCount": 25,
+    "cachedContentTokenCount": 5000
+  }
+}

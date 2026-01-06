@@ -1,0 +1,70 @@
+{
+  "description": "Test fixtures index - Lists all available fixture files and their purpose",
+  "accounts": {
+    "directory": "accounts/",
+    "files": {
+      "single-account.json": "Single OAuth account configuration",
+      "multiple-accounts.json": "Multiple accounts from different sources (oauth, database, manual)",
+      "rate-limited-accounts.json": "Accounts with model-specific rate limits",
+      "invalid-account.json": "Mix of valid and invalid accounts",
+      "empty-accounts.json": "Empty accounts configuration"
+    }
+  },
+  "anthropic": {
+    "requests": {
+      "directory": "anthropic/requests/",
+      "files": {
+        "simple-message.json": "Basic single user message",
+        "conversation.json": "Multi-turn conversation with system prompt",
+        "with-tools.json": "Request with tool definitions",
+        "tool-result.json": "Request with tool result in history",
+        "with-thinking.json": "Request with thinking budget configuration",
+        "with-image.json": "Request with base64 encoded image",
+        "with-document.json": "Request with PDF document",
+        "gemini-model.json": "Request targeting Gemini model",
+        "streaming.json": "Streaming request"
+      }
+    },
+    "responses": {
+      "directory": "anthropic/responses/",
+      "files": {
+        "simple-text.json": "Simple text response",
+        "with-thinking.json": "Response with thinking block",
+        "tool-use.json": "Response with tool use",
+        "after-tool-result.json": "Response after receiving tool result",
+        "multiple-tool-use.json": "Response with multiple tool calls",
+        "max-tokens.json": "Response truncated by max tokens",
+        "stop-sequence.json": "Response stopped by stop sequence",
+        "with-cache.json": "Response with cache hit"
+      }
+    }
+  },
+  "google": {
+    "responses": {
+      "directory": "google/responses/",
+      "files": {
+        "simple-text.json": "Simple text response",
+        "with-thinking.json": "Response with thinking (thought: true)",
+        "function-call.json": "Response with function call and thinking",
+        "multiple-function-calls.json": "Response with multiple function calls",
+        "max-tokens.json": "Response with MAX_TOKENS finish reason",
+        "wrapped-response.json": "Response wrapped in response object",
+        "multiple-text-parts.json": "Response with multiple text parts",
+        "empty-candidates.json": "Response with empty candidates array",
+        "empty-parts.json": "Response with empty parts array",
+        "with-cache.json": "Response with cache metadata",
+        "gemini-thinking.json": "Gemini-style thinking response"
+      }
+    }
+  },
+  "schemas": {
+    "directory": "schemas/",
+    "files": {
+      "anthropic-request.schema.json": "JSON Schema for Anthropic Messages API request",
+      "anthropic-response.schema.json": "JSON Schema for Anthropic Messages API response",
+      "google-response.schema.json": "JSON Schema for Google Cloud Code API response",
+      "account-config.schema.json": "JSON Schema for account configuration file",
+      "tool-schema.schema.json": "JSON Schema for tool input schema definitions"
+    }
+  }
+}

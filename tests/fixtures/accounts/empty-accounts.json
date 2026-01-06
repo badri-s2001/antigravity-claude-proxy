@@ -1,0 +1,7 @@
+{
+  "accounts": [],
+  "settings": {
+    "cooldownDurationMs": 60000
+  },
+  "activeIndex": -1
+}

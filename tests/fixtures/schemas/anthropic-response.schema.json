@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "anthropic-response.schema.json",
+  "title": "Anthropic Messages API Response",
+  "description": "Schema for Anthropic Messages API response format",
+  "type": "object",
+  "required": ["id", "type", "role", "content", "model", "stop_reason", "stop_sequence", "usage"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^msg_[a-f0-9]+$",
+      "description": "Unique message identifier"
+    },
+    "type": {
+      "const": "message",
+      "description": "Response type"
+    },
+    "role": {
+      "const": "assistant",
+      "description": "Role of the responder"
+    },
+    "content": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/contentBlock" },
+      "description": "Response content blocks"
+    },
+    "model": {
+      "type": "string",
+      "description": "Model used for the response"
+    },
+    "stop_reason": {
+      "type": ["string", "null"],
+      "enum": ["end_turn", "max_tokens", "tool_use", "stop_sequence", null],
+      "description": "Reason the model stopped generating"
+    },
+    "stop_sequence": {
+      "type": ["string", "null"],
+      "description": "The stop sequence that triggered stopping, if any"
+    },
+    "usage": {
+      "$ref": "#/$defs/usage",
+      "description": "Token usage information"
+    }
+  },
+  "$defs": {
+    "contentBlock": {
+      "oneOf": [{ "$ref": "#/$defs/textBlock" }, { "$ref": "#/$defs/thinkingBlock" }, { "$ref": "#/$defs/toolUseBlock" }]
+    },
+    "textBlock": {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "const": "text" },
+        "text": { "type": "string" }
+      }
+    },
+    "thinkingBlock": {
+      "type": "object",
+      "required": ["type", "thinking"],
+      "properties": {
+        "type": { "const": "thinking" },
+        "thinking": { "type": "string" },
+        "signature": { "type": "string" }
+      }
+    },
+    "toolUseBlock": {
+      "type": "object",
+      "required": ["type", "id", "name", "input"],
+      "properties": {
+        "type": { "const": "tool_use" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "input": { "type": "object" },
+        "thoughtSignature": { "type": "string" }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "required": ["input_tokens", "output_tokens"],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_read_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_creation_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

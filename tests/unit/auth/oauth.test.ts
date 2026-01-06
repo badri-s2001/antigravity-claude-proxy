@@ -7,7 +7,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getAuthorizationUrl, extractCodeFromInput, exchangeCode, refreshAccessToken, getUserEmail, discoverProjectId, completeOAuthFlow, validateRefreshToken, startCallbackServer } from "../../../src/auth/oauth.js";
 import { OAUTH_CONFIG, OAUTH_REDIRECT_URI } from "../../../src/constants.js";
 
-// Mock fetch globally
+// Save original fetch for tests that need real HTTP requests
+const originalFetch = global.fetch;
+
+// Mock fetch globally for most tests
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -533,14 +536,150 @@ describe("auth/oauth", () => {
     });
   });
 
-  describe("startCallbackServer", () => {
-    it("is a function that returns a promise", () => {
-      expect(typeof startCallbackServer).toBe("function");
-      // We don't actually start the server in tests as it would bind to a port
+  describe.sequential("startCallbackServer", () => {
+    // These tests need real HTTP requests to the local server
+    // Use a helper function that disables keep-alive to prevent connection reuse
+    const fetchNoKeepAlive = (url: string) =>
+      originalFetch(url, {
+        headers: { Connection: "close" },
+      });
+
+    beforeEach(() => {
+      global.fetch = originalFetch;
     });
 
-    // Note: Full integration tests for startCallbackServer would require
-    // actually starting an HTTP server and making requests to it.
-    // These are better suited for integration tests.
+    afterEach(async () => {
+      // Give time for server socket to fully close and port to be released
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      global.fetch = mockFetch;
+    });
+
+    it("is a function that returns a promise", () => {
+      expect(typeof startCallbackServer).toBe("function");
+    });
+
+    it("resolves with authorization code on successful callback", async () => {
+      const expectedState = "test-state-123";
+      const testCode = "4/0ABC-test-code-xyz";
+
+      // Start the server with short timeout
+      const serverPromise = startCallbackServer(expectedState, 5000);
+
+      // Give server time to start
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Make callback request with valid code and state
+      const response = await fetchNoKeepAlive(`http://localhost:${OAUTH_CONFIG.callbackPort}/oauth-callback?code=${encodeURIComponent(testCode)}&state=${expectedState}`);
+
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      expect(html).toContain("Authentication Successful");
+
+      // Server should resolve with the code
+      const result = await serverPromise;
+      expect(result).toBe(testCode);
+    });
+
+    it("rejects with error when OAuth error is present in callback", async () => {
+      const expectedState = "test-state-456";
+
+      const serverPromise = startCallbackServer(expectedState, 5000);
+      // Attach a no-op catch handler to prevent unhandled rejection warning
+      // The actual assertion happens below
+      serverPromise.catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const response = await fetchNoKeepAlive(`http://localhost:${OAUTH_CONFIG.callbackPort}/oauth-callback?error=access_denied`);
+
+      expect(response.status).toBe(400);
+      const html = await response.text();
+      expect(html).toContain("Authentication Failed");
+      expect(html).toContain("access_denied");
+
+      await expect(serverPromise).rejects.toThrow("OAuth error: access_denied");
+    });
+
+    it("rejects with error when state does not match (CSRF protection)", async () => {
+      const expectedState = "expected-state";
+      const wrongState = "wrong-state";
+
+      const serverPromise = startCallbackServer(expectedState, 5000);
+      // Attach a no-op catch handler to prevent unhandled rejection warning
+      serverPromise.catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const response = await fetchNoKeepAlive(`http://localhost:${OAUTH_CONFIG.callbackPort}/oauth-callback?code=test-code&state=${wrongState}`);
+
+      expect(response.status).toBe(400);
+      const html = await response.text();
+      expect(html).toContain("State mismatch");
+
+      await expect(serverPromise).rejects.toThrow("State mismatch");
+    });
+
+    it("rejects with error when no authorization code is provided", async () => {
+      const expectedState = "test-state-789";
+
+      const serverPromise = startCallbackServer(expectedState, 5000);
+      // Attach a no-op catch handler to prevent unhandled rejection warning
+      serverPromise.catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const response = await fetchNoKeepAlive(`http://localhost:${OAUTH_CONFIG.callbackPort}/oauth-callback?state=${expectedState}`);
+
+      expect(response.status).toBe(400);
+      const html = await response.text();
+      expect(html).toContain("No authorization code");
+
+      await expect(serverPromise).rejects.toThrow("No authorization code");
+    });
+
+    it("returns 404 for non-callback paths", async () => {
+      const expectedState = "test-state-404";
+
+      const serverPromise = startCallbackServer(expectedState, 5000);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const response = await fetchNoKeepAlive(`http://localhost:${OAUTH_CONFIG.callbackPort}/wrong-path`);
+
+      expect(response.status).toBe(404);
+
+      // Clean up - need to trigger a proper callback or timeout
+      // We'll use a short timeout approach by racing with a real callback
+      const cleanupResponse = await fetchNoKeepAlive(`http://localhost:${OAUTH_CONFIG.callbackPort}/oauth-callback?code=cleanup&state=${expectedState}`);
+      expect(cleanupResponse.status).toBe(200);
+
+      await serverPromise; // Should resolve with "cleanup"
+    });
+
+    it("rejects with timeout error when no callback received", async () => {
+      const expectedState = "timeout-state";
+
+      // Very short timeout for testing
+      const serverPromise = startCallbackServer(expectedState, 100);
+      // Attach a no-op catch handler to prevent unhandled rejection warning
+      serverPromise.catch(() => {});
+
+      await expect(serverPromise).rejects.toThrow("OAuth callback timeout");
+    });
+
+    it("rejects with port in use error when port is already bound", async () => {
+      const expectedState = "port-conflict-state";
+
+      // Start first server
+      const server1Promise = startCallbackServer(expectedState, 5000);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Try to start second server on same port
+      const server2Promise = startCallbackServer("another-state", 5000);
+      // Attach a no-op catch handler to prevent unhandled rejection warning
+      server2Promise.catch(() => {});
+
+      await expect(server2Promise).rejects.toThrow(`Port ${OAUTH_CONFIG.callbackPort} is already in use`);
+
+      // Clean up first server
+      await fetchNoKeepAlive(`http://localhost:${OAUTH_CONFIG.callbackPort}/oauth-callback?code=cleanup&state=${expectedState}`);
+      await server1Promise;
+    });
   });
 });

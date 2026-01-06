@@ -1,0 +1,44 @@
+{
+  "accounts": [
+    {
+      "email": "primary@example.com",
+      "source": "oauth",
+      "dbPath": null,
+      "refreshToken": "1//0primary-refresh-token-example",
+      "projectId": "cloudcode-primary-project",
+      "addedAt": 1704067200000,
+      "lastUsed": 1704240000000,
+      "isInvalid": false,
+      "invalidReason": null,
+      "modelRateLimits": {}
+    },
+    {
+      "email": "secondary@example.com",
+      "source": "database",
+      "dbPath": "/home/user/.gemini/oauth_creds.json",
+      "refreshToken": "1//0secondary-refresh-token-example",
+      "projectId": "cloudcode-secondary-project",
+      "addedAt": 1704153600000,
+      "lastUsed": 1704153600000,
+      "isInvalid": false,
+      "invalidReason": null,
+      "modelRateLimits": {}
+    },
+    {
+      "email": "manual@example.com",
+      "source": "manual",
+      "dbPath": null,
+      "refreshToken": "1//0manual-refresh-token-example",
+      "projectId": "cloudcode-manual-project",
+      "addedAt": 1704240000000,
+      "lastUsed": null,
+      "isInvalid": false,
+      "invalidReason": null,
+      "modelRateLimits": {}
+    }
+  ],
+  "settings": {
+    "cooldownDurationMs": 60000
+  },
+  "activeIndex": 0
+}

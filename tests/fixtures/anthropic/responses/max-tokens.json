@@ -1,0 +1,20 @@
+{
+  "id": "msg_06truncated123jkl",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Once upon a time in a distant galaxy, there lived a brave explorer named Captain Aria. She commanded the starship Horizon, a vessel renowned for its speed and durability. Her crew consisted of the finest engineers, scientists, and navigators from across the United Federation of Planets.\n\nOne day, they received a mysterious signal from the edge of known space. The signal contained coordinates to a planet that didn't appear on any map. Captain Aria gathered her senior officers to discuss their options.\n\n\"This could be a trap,\" warned Commander Chen, her first officer.\n\n\"Or it could be the discovery of a lifetime,\" countered Dr. Elena, the chief science officer.\n\nAfter much deliberation, Captain Aria made her decision. \"We didn't join Starfleet to play it safe. Set a course for those coordinates.\"\n\nThe journey took three weeks. As they approached the unknown planet, sensors began picking up strange readings. The planet was covered in"
+    }
+  ],
+  "model": "claude-sonnet-4-5-thinking",
+  "stop_reason": "max_tokens",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 25,
+    "output_tokens": 250,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0
+  }
+}

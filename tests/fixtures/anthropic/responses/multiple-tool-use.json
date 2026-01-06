@@ -1,0 +1,43 @@
+{
+  "id": "msg_05multitools789ghi",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "The user wants to compare weather between Tokyo and New York. I need to call the get_weather tool twice - once for each city. I'll make both calls so we can compare the data.",
+      "signature": "multitoolsig1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz123456"
+    },
+    {
+      "type": "text",
+      "text": "I'll fetch the weather for both cities to compare them."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_tokyo_compare",
+      "name": "get_weather",
+      "input": {
+        "city": "Tokyo",
+        "units": "celsius"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_newyork_compare",
+      "name": "get_weather",
+      "input": {
+        "city": "New York",
+        "units": "fahrenheit"
+      }
+    }
+  ],
+  "model": "claude-sonnet-4-5-thinking",
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 189,
+    "output_tokens": 112,
+    "cache_read_input_tokens": 50,
+    "cache_creation_input_tokens": 0
+  }
+}

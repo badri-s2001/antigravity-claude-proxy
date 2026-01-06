@@ -1,0 +1,64 @@
+{
+  "model": "claude-sonnet-4-5-thinking",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is the weather in Tokyo?"
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "The user wants to know the weather in Tokyo. I should use the get_weather tool to fetch this information.",
+          "signature": "abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890"
+        },
+        {
+          "type": "text",
+          "text": "Let me check the weather in Tokyo for you."
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_01abc123def456",
+          "name": "get_weather",
+          "input": {
+            "city": "Tokyo",
+            "units": "celsius"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01abc123def456",
+          "content": "{\"temperature\": 22, \"condition\": \"sunny\", \"humidity\": 65}"
+        }
+      ]
+    }
+  ],
+  "system": "You are a helpful weather assistant.",
+  "max_tokens": 4096,
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Get the current weather for a specified city",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "The city name"
+          },
+          "units": {
+            "type": "string",
+            "enum": ["celsius", "fahrenheit"]
+          }
+        },
+        "required": ["city"]
+      }
+    }
+  ]
+}

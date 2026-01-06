@@ -1,0 +1,34 @@
+{
+  "id": "msg_03tooluse789xyz012",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "The user wants to know the weather in Tokyo. I should use the get_weather tool to fetch current weather information for Tokyo. I'll request the data in celsius units since that's commonly used in Japan.",
+      "signature": "weathersig1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890xyz"
+    },
+    {
+      "type": "text",
+      "text": "I'll check the current weather in Tokyo for you."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01weather123abc",
+      "name": "get_weather",
+      "input": {
+        "city": "Tokyo",
+        "units": "celsius"
+      }
+    }
+  ],
+  "model": "claude-opus-4-5-thinking",
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 245,
+    "output_tokens": 89,
+    "cache_read_input_tokens": 100,
+    "cache_creation_input_tokens": 0
+  }
+}

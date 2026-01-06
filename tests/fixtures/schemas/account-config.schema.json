@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "account-config.schema.json",
+  "title": "Account Configuration",
+  "description": "Schema for account configuration file format",
+  "type": "object",
+  "required": ["accounts", "settings", "activeIndex"],
+  "properties": {
+    "accounts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/account" },
+      "description": "List of configured accounts"
+    },
+    "settings": {
+      "$ref": "#/$defs/settings",
+      "description": "Global settings"
+    },
+    "activeIndex": {
+      "type": "integer",
+      "minimum": -1,
+      "description": "Index of currently active account (-1 if none)"
+    }
+  },
+  "$defs": {
+    "account": {
+      "type": "object",
+      "required": ["email", "source", "lastUsed", "modelRateLimits"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Account email address"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["oauth", "database", "manual"],
+          "description": "How the account was added"
+        },
+        "dbPath": {
+          "type": ["string", "null"],
+          "description": "Path to database file if source is 'database'"
+        },
+        "refreshToken": {
+          "type": "string",
+          "description": "OAuth refresh token"
+        },
+        "apiKey": {
+          "type": "string",
+          "description": "API key if applicable"
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Cloud project ID"
+        },
+        "addedAt": {
+          "type": "integer",
+          "description": "Timestamp when account was added"
+        },
+        "lastUsed": {
+          "type": ["integer", "null"],
+          "description": "Timestamp of last use"
+        },
+        "isInvalid": {
+          "type": "boolean",
+          "description": "Whether the account is marked as invalid"
+        },
+        "invalidReason": {
+          "type": ["string", "null"],
+          "description": "Reason for invalidity"
+        },
+        "invalidAt": {
+          "type": "integer",
+          "description": "Timestamp when account was marked invalid"
+        },
+        "modelRateLimits": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/modelRateLimit"
+          },
+          "description": "Per-model rate limit status"
+        }
+      }
+    },
+    "modelRateLimit": {
+      "type": "object",
+      "required": ["isRateLimited", "resetTime"],
+      "properties": {
+        "isRateLimited": {
+          "type": "boolean",
+          "description": "Whether the model is currently rate limited"
+        },
+        "resetTime": {
+          "type": ["integer", "null"],
+          "description": "Timestamp when rate limit resets"
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "cooldownDurationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cooldown duration in milliseconds"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

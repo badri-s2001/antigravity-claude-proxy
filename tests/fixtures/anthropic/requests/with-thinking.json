@@ -1,0 +1,13 @@
+{
+  "model": "claude-sonnet-4-5-thinking",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Solve this complex reasoning problem step by step."
+    }
+  ],
+  "max_tokens": 16384,
+  "thinking": {
+    "budget_tokens": 10000
+  }
+}

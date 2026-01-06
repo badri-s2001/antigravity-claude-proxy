@@ -1,0 +1,27 @@
+{
+  "model": "gemini-3-flash",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Explain quantum computing."
+    }
+  ],
+  "system": [
+    {
+      "type": "text",
+      "text": "You are a physics expert.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    },
+    {
+      "type": "text",
+      "text": "Explain concepts clearly for beginners."
+    }
+  ],
+  "max_tokens": 4096,
+  "temperature": 0.5,
+  "top_p": 0.9,
+  "top_k": 40,
+  "stop_sequences": ["END", "STOP"]
+}

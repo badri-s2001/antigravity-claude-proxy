@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "anthropic-request.schema.json",
+  "title": "Anthropic Messages API Request",
+  "description": "Schema for Anthropic Messages API request format",
+  "type": "object",
+  "required": ["model", "messages", "max_tokens"],
+  "properties": {
+    "model": {
+      "type": "string",
+      "description": "The model identifier to use for the request",
+      "examples": ["claude-sonnet-4-5-thinking", "claude-opus-4-5-thinking", "gemini-3-flash"]
+    },
+    "messages": {
+      "type": "array",
+      "description": "Array of messages in the conversation",
+      "items": {
+        "$ref": "#/$defs/message"
+      },
+      "minItems": 1
+    },
+    "system": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/textBlock" }
+        }
+      ],
+      "description": "System prompt for the conversation"
+    },
+    "max_tokens": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum number of tokens to generate"
+    },
+    "temperature": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2,
+      "description": "Sampling temperature"
+    },
+    "top_p": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Nucleus sampling parameter"
+    },
+    "top_k": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Top-k sampling parameter"
+    },
+    "stop_sequences": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Custom stop sequences"
+    },
+    "tools": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tool" },
+      "description": "Available tools for the model"
+    },
+    "thinking": {
+      "$ref": "#/$defs/thinkingConfig",
+      "description": "Thinking/reasoning configuration"
+    },
+    "stream": {
+      "type": "boolean",
+      "description": "Whether to stream the response"
+    }
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "required": ["role", "content"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant"]
+        },
+        "content": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "array",
+              "items": { "$ref": "#/$defs/contentBlock" }
+            }
+          ]
+        }
+      }
+    },
+    "contentBlock": {
+      "oneOf": [{ "$ref": "#/$defs/textBlock" }, { "$ref": "#/$defs/imageBlock" }, { "$ref": "#/$defs/documentBlock" }, { "$ref": "#/$defs/toolUseBlock" }, { "$ref": "#/$defs/toolResultBlock" }, { "$ref": "#/$defs/thinkingBlock" }]
+    },
+    "textBlock": {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "const": "text" },
+        "text": { "type": "string" },
+        "cache_control": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" }
+          }
+        }
+      }
+    },
+    "imageBlock": {
+      "type": "object",
+      "required": ["type", "source"],
+      "properties": {
+        "type": { "const": "image" },
+        "source": { "$ref": "#/$defs/mediaSource" }
+      }
+    },
+    "documentBlock": {
+      "type": "object",
+      "required": ["type", "source"],
+      "properties": {
+        "type": { "const": "document" },
+        "source": { "$ref": "#/$defs/mediaSource" }
+      }
+    },
+    "mediaSource": {
+      "type": "object",
+      "required": ["type", "media_type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["base64", "url"]
+        },
+        "media_type": { "type": "string" },
+        "data": { "type": "string" },
+        "url": { "type": "string" }
+      }
+    },
+    "toolUseBlock": {
+      "type": "object",
+      "required": ["type", "id", "name", "input"],
+      "properties": {
+        "type": { "const": "tool_use" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "input": { "type": "object" },
+        "thoughtSignature": { "type": "string" }
+      }
+    },
+    "toolResultBlock": {
+      "type": "object",
+      "required": ["type", "tool_use_id", "content"],
+      "properties": {
+        "type": { "const": "tool_result" },
+        "tool_use_id": { "type": "string" },
+        "content": {
+          "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "object" } }]
+        },
+        "is_error": { "type": "boolean" }
+      }
+    },
+    "thinkingBlock": {
+      "type": "object",
+      "required": ["type", "thinking"],
+      "properties": {
+        "type": { "const": "thinking" },
+        "thinking": { "type": "string" },
+        "signature": { "type": "string" }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "input_schema": { "type": "object" }
+      }
+    },
+    "thinkingConfig": {
+      "type": "object",
+      "properties": {
+        "budget_tokens": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

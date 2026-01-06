@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "The user wants weather information for Tokyo. I should use the get_weather function to retrieve this data. I'll request celsius units since that's standard in Japan.",
+            "thought": true,
+            "thoughtSignature": "geminithinkingsig1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrs"
+          },
+          {
+            "text": "I'll check the current weather in Tokyo for you."
+          },
+          {
+            "functionCall": {
+              "name": "get_weather",
+              "args": {
+                "city": "Tokyo",
+                "units": "celsius"
+              },
+              "id": "call_weather_tokyo_123"
+            },
+            "thoughtSignature": "geminitoolsig1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuv"
+          }
+        ]
+      },
+      "finishReason": "TOOL_USE"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 250,
+    "candidatesTokenCount": 85,
+    "cachedContentTokenCount": 100
+  }
+}

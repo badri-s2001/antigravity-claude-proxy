@@ -1,0 +1,25 @@
+{
+  "model": "claude-sonnet-4-5-thinking",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is the capital of France?"
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "The capital of France is Paris."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": "Tell me more about it."
+    }
+  ],
+  "system": "You are a helpful geography assistant.",
+  "max_tokens": 2048,
+  "temperature": 0.7
+}

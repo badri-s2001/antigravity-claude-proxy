@@ -1,0 +1,25 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "First paragraph of the response with multiple text parts."
+          },
+          {
+            "text": "Second paragraph continues the explanation with more details."
+          },
+          {
+            "text": "Third paragraph concludes the response with a summary."
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 45,
+    "candidatesTokenCount": 38,
+    "cachedContentTokenCount": 0
+  }
+}

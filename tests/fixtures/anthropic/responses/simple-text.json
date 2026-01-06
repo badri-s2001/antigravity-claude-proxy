@@ -1,0 +1,20 @@
+{
+  "id": "msg_01abc123def456789",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Hello! I'm doing well, thank you for asking. How can I help you today?"
+    }
+  ],
+  "model": "claude-sonnet-4-5-thinking",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 12,
+    "output_tokens": 24,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0
+  }
+}

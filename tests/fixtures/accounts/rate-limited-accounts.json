@@ -1,0 +1,41 @@
+{
+  "accounts": [
+    {
+      "email": "rate-limited@example.com",
+      "source": "oauth",
+      "dbPath": null,
+      "refreshToken": "1//0ratelimited-refresh-token",
+      "projectId": "cloudcode-ratelimited-project",
+      "addedAt": 1704067200000,
+      "lastUsed": 1704326400000,
+      "isInvalid": false,
+      "invalidReason": null,
+      "modelRateLimits": {
+        "claude-sonnet-4-5-thinking": {
+          "isRateLimited": true,
+          "resetTime": 1704330000000
+        },
+        "gemini-3-flash": {
+          "isRateLimited": true,
+          "resetTime": 1704327600000
+        }
+      }
+    },
+    {
+      "email": "available@example.com",
+      "source": "oauth",
+      "dbPath": null,
+      "refreshToken": "1//0available-refresh-token",
+      "projectId": "cloudcode-available-project",
+      "addedAt": 1704153600000,
+      "lastUsed": 1704240000000,
+      "isInvalid": false,
+      "invalidReason": null,
+      "modelRateLimits": {}
+    }
+  ],
+  "settings": {
+    "cooldownDurationMs": 60000
+  },
+  "activeIndex": 1
+}

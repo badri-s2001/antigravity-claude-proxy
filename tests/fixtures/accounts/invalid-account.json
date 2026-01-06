@@ -1,0 +1,33 @@
+{
+  "accounts": [
+    {
+      "email": "invalid@example.com",
+      "source": "oauth",
+      "dbPath": null,
+      "refreshToken": "1//0invalid-refresh-token",
+      "projectId": "cloudcode-invalid-project",
+      "addedAt": 1704067200000,
+      "lastUsed": 1704153600000,
+      "isInvalid": true,
+      "invalidReason": "invalid_grant: Token has been revoked",
+      "invalidAt": 1704326400000,
+      "modelRateLimits": {}
+    },
+    {
+      "email": "valid@example.com",
+      "source": "oauth",
+      "dbPath": null,
+      "refreshToken": "1//0valid-refresh-token",
+      "projectId": "cloudcode-valid-project",
+      "addedAt": 1704153600000,
+      "lastUsed": 1704326400000,
+      "isInvalid": false,
+      "invalidReason": null,
+      "modelRateLimits": {}
+    }
+  ],
+  "settings": {
+    "cooldownDurationMs": 60000
+  },
+  "activeIndex": 1
+}

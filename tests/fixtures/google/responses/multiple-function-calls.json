@@ -1,0 +1,36 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "functionCall": {
+              "name": "get_weather",
+              "args": {
+                "city": "Tokyo",
+                "units": "celsius"
+              },
+              "id": "call_weather_1"
+            }
+          },
+          {
+            "functionCall": {
+              "name": "get_weather",
+              "args": {
+                "city": "New York",
+                "units": "fahrenheit"
+              },
+              "id": "call_weather_2"
+            }
+          }
+        ]
+      },
+      "finishReason": "TOOL_USE"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 180,
+    "candidatesTokenCount": 95,
+    "cachedContentTokenCount": 50
+  }
+}

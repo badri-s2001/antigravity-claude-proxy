@@ -1,0 +1,23 @@
+{
+  "model": "claude-sonnet-4-5-thinking",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image",
+          "source": {
+            "type": "base64",
+            "media_type": "image/png",
+            "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+          }
+        },
+        {
+          "type": "text",
+          "text": "What do you see in this image?"
+        }
+      ]
+    }
+  ],
+  "max_tokens": 2048
+}

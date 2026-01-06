@@ -1,0 +1,11 @@
+{
+  "model": "claude-sonnet-4-5-thinking",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a story about space exploration."
+    }
+  ],
+  "max_tokens": 8192,
+  "stream": true
+}

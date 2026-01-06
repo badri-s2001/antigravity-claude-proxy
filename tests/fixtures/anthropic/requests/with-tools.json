@@ -1,0 +1,32 @@
+{
+  "model": "claude-opus-4-5-thinking",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is the weather in Tokyo?"
+    }
+  ],
+  "system": "You are a helpful assistant with access to weather tools.",
+  "max_tokens": 4096,
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Get the current weather for a specified city",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "The city name to get weather for"
+          },
+          "units": {
+            "type": "string",
+            "enum": ["celsius", "fahrenheit"],
+            "description": "Temperature units"
+          }
+        },
+        "required": ["city"]
+      }
+    }
+  ]
+}

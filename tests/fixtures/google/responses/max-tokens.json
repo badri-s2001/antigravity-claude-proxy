@@ -1,0 +1,19 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "This is a long response that got truncated due to maximum token limits. The content would continue but was cut off at this point because the model reached its output limit. In a real scenario, this might happen when generating very long documents, stories, or detailed explanations that exceed the specified max_tokens parameter in the request."
+          }
+        ]
+      },
+      "finishReason": "MAX_TOKENS"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 30,
+    "candidatesTokenCount": 500,
+    "cachedContentTokenCount": 0
+  }
+}
