@@ -1,0 +1,20 @@
+{
+  "id": "msg_NORMALIZED",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Based on the cached context, here is my response."
+    }
+  ],
+  "model": "claude-sonnet-4-5-thinking",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 200,
+    "output_tokens": 15,
+    "cache_read_input_tokens": 800,
+    "cache_creation_input_tokens": 0
+  }
+}
