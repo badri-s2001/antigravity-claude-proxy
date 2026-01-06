@@ -11,12 +11,15 @@ import { forceRefresh } from "./auth/token-extractor.js";
 import { REQUEST_BODY_LIMIT } from "./constants.js";
 import { AccountManager } from "./account-manager/index.js";
 import { formatDuration } from "./utils/helpers.js";
-import { logger } from "./utils/logger.js";
+import { getLogger } from "./utils/logger-new.js";
 import type { AnthropicRequest } from "./format/types.js";
 
 // Parse fallback flag directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
 const FALLBACK_ENABLED = args.includes("--fallback") || process.env.FALLBACK === "true";
+
+// Get logger instance
+const logger = getLogger();
 
 const app: Application = express();
 
@@ -75,10 +78,10 @@ async function ensureInitialized(): Promise<void> {
       await accountManager.initialize();
       isInitialized = true;
       const status = accountManager.getStatus();
-      logger.success(`[Server] Account pool initialized: ${status.summary}`);
+      logger.info({ accounts: status.summary }, "[Server] Account pool initialized");
     } catch (error) {
       initPromise = null; // Allow retry on failure
-      logger.error("[Server] Failed to initialize account manager:", (error as Error).message);
+      logger.error({ error: (error as Error).message }, "[Server] Failed to initialize account manager");
       throw error;
     }
   })();
@@ -139,7 +142,7 @@ function parseError(error: Error): ParsedError {
 app.use((req: Request, _res: Response, next: NextFunction) => {
   // Skip logging for event logging batch unless in debug mode
   if (req.path === "/api/event_logging/batch") {
-    if (logger.isDebugEnabled) {
+    if (logger.isLevelEnabled("debug")) {
       logger.debug(`[${req.method}] ${req.path}`);
     }
   } else {
@@ -245,7 +248,7 @@ app.get("/health", async (_req: Request, res: Response) => {
       accounts: detailedAccounts,
     });
   } catch (error) {
-    logger.error("[API] Health check failed:", error);
+    logger.error({ err: error }, "[API] Health check failed");
     res.status(503).json({
       status: "error",
       error: (error as Error).message,
@@ -519,7 +522,7 @@ app.get("/v1/models", async (_req: Request, res: Response) => {
     const models = await listModels(token);
     res.json(models);
   } catch (error) {
-    logger.error("[API] Error listing models:", error);
+    logger.error({ err: error }, "[API] Error listing models");
     res.status(500).json({
       type: "error",
       error: {
@@ -615,10 +618,10 @@ app.post("/v1/messages", async (req: Request<object, unknown, MessagesRequestBod
       temperature,
     };
 
-    logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);
+    logger.info({ model: request.model, stream: !!stream }, "[API] Request received");
 
     // Debug: Log message structure to diagnose tool_use/tool_result ordering
-    if (logger.isDebugEnabled) {
+    if (logger.isLevelEnabled("debug")) {
       logger.debug("[API] Message structure:");
       messages.forEach((msg, i) => {
         const contentTypes = Array.isArray(msg.content) ? msg.content.map((c) => c.type ?? "text").join(", ") : typeof msg.content === "string" ? "text" : "unknown";
@@ -645,7 +648,7 @@ app.post("/v1/messages", async (req: Request<object, unknown, MessagesRequestBod
         }
         res.end();
       } catch (streamError) {
-        logger.error("[API] Stream error:", streamError);
+        logger.error({ err: streamError }, "[API] Stream error");
 
         const { errorType, errorMessage } = parseError(streamError as Error);
 
@@ -663,7 +666,7 @@ app.post("/v1/messages", async (req: Request<object, unknown, MessagesRequestBod
       res.json(response);
     }
   } catch (error) {
-    logger.error("[API] Error:", error);
+    logger.error({ err: error }, "[API] Error");
 
     const { errorType, statusCode, errorMessage: initialErrorMessage } = parseError(error as Error);
     let errorMessage = initialErrorMessage;
@@ -681,7 +684,7 @@ app.post("/v1/messages", async (req: Request<object, unknown, MessagesRequestBod
       }
     }
 
-    logger.warn(`[API] Returning error response: ${statusCode} ${errorType} - ${errorMessage}`);
+    logger.warn({ statusCode, errorType, errorMessage }, "[API] Returning error response");
 
     // Check if headers have already been sent (for streaming that failed mid-way)
     if (res.headersSent) {
@@ -709,8 +712,8 @@ app.post("/v1/messages", async (req: Request<object, unknown, MessagesRequestBod
  * Catch-all for unsupported endpoints
  */
 app.use("*", (req: Request, res: Response) => {
-  if (logger.isDebugEnabled) {
-    logger.debug(`[API] 404 Not Found: ${req.method} ${req.originalUrl}`);
+  if (logger.isLevelEnabled("debug")) {
+    logger.debug({ method: req.method, url: req.originalUrl }, "[API] 404 Not Found");
   }
   res.status(404).json({
     type: "error",

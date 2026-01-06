@@ -5,7 +5,8 @@
 
 import app from "./server.js";
 import { DEFAULT_PORT } from "./constants.js";
-import { logger } from "./utils/logger.js";
+import { initLogger, getLogger } from "./utils/logger-new.js";
+import { banner } from "./cli/ui.js";
 import path from "path";
 import os from "os";
 
@@ -14,8 +15,9 @@ const args = process.argv.slice(2);
 const isDebug = args.includes("--debug") || process.env.DEBUG === "true";
 const isFallbackEnabled = args.includes("--fallback") || process.env.FALLBACK === "true";
 
-// Initialize logger
-logger.setDebug(isDebug);
+// Initialize logger with appropriate level
+initLogger({ level: isDebug ? "debug" : "info" });
+const logger = getLogger();
 
 if (isDebug) {
   logger.debug("Debug mode enabled");
@@ -34,74 +36,47 @@ const PORT = process.env.PORT ?? DEFAULT_PORT;
 const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, ".antigravity-claude-proxy");
 
+// Read version from package.json
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = join(__dirname, "..", "package.json");
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as { version: string };
+const VERSION = packageJson.version;
+
 app.listen(PORT, () => {
   // Clear console for a clean start
   console.clear();
 
-  const border = "║";
-  // align for 2-space indent (60 chars), align4 for 4-space indent (58 chars)
-  const align = (text: string): string => text + " ".repeat(Math.max(0, 60 - text.length));
-  const align4 = (text: string): string => text + " ".repeat(Math.max(0, 58 - text.length));
+  // Show startup banner
+  console.log(banner("Antigravity Claude Proxy", VERSION));
+  console.log();
 
-  // Build Control section dynamically
-  let controlSection = "║  Control:                                                    ║\n";
-  if (!isDebug) {
-    controlSection += "║    --debug            Enable debug logging                   ║\n";
-  }
-  if (!isFallbackEnabled) {
-    controlSection += "║    --fallback         Enable model fallback on quota exhaust ║\n";
-  }
-  controlSection += "║    Ctrl+C             Stop server                            ║";
+  // Log startup info with structured metadata
+  logger.info({ port: PORT, configDir: CONFIG_DIR }, "Server started");
 
-  // Build status section if any modes are active
-  let statusSection = "";
-  if (isDebug || isFallbackEnabled) {
-    statusSection = "║                                                              ║\n";
-    statusSection += "║  Active Modes:                                               ║\n";
-    if (isDebug) {
-      statusSection += "║    Debug mode enabled                                        ║\n";
-    }
-    if (isFallbackEnabled) {
-      statusSection += "║    Model fallback enabled                                    ║\n";
-    }
-  }
-
-  logger.log(`
-╔══════════════════════════════════════════════════════════════╗
-║           Antigravity Claude Proxy Server                    ║
-╠══════════════════════════════════════════════════════════════╣
-║                                                              ║
-${border}  ${align(`Server running at: http://localhost:${PORT}`)}${border}
-${statusSection}║                                                              ║
-${controlSection}
-║                                                              ║
-║  Endpoints:                                                  ║
-║    POST /v1/messages         - Anthropic Messages API        ║
-║    GET  /v1/models           - List available models         ║
-║    GET  /health              - Health check                  ║
-║    GET  /account-limits      - Account status & quotas       ║
-║    POST /refresh-token       - Force token refresh           ║
-║                                                              ║
-${border}  ${align(`Configuration:`)}${border}
-${border}    ${align4(`Storage: ${CONFIG_DIR}`)}${border}
-║                                                              ║
-║  Usage with Claude Code:                                     ║
-${border}    ${align4(`export ANTHROPIC_BASE_URL=http://localhost:${PORT}`)}${border}
-║    export ANTHROPIC_API_KEY=dummy                            ║
-║    claude                                                    ║
-║                                                              ║
-║  Add Google accounts:                                        ║
-║    npm run accounts                                          ║
-║                                                              ║
-║  Prerequisites (if no accounts configured):                  ║
-║    - Antigravity must be running                             ║
-║    - Have a chat panel open in Antigravity                   ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-  `);
-
-  logger.success(`Server started successfully on port ${PORT}`);
   if (isDebug) {
     logger.warn("Running in DEBUG mode - verbose logs enabled");
   }
+
+  if (isFallbackEnabled) {
+    logger.info("Model fallback enabled - will switch models on quota exhaustion");
+  }
+
+  // Log endpoints
+  logger.info({ endpoints: ["POST /v1/messages - Anthropic Messages API", "GET  /v1/models - List available models", "GET  /health - Health check", "GET  /account-limits - Account status & quotas", "POST /refresh-token - Force token refresh"] }, "Available endpoints");
+
+  // Log usage instructions
+  logger.info(
+    {
+      env: {
+        ANTHROPIC_BASE_URL: `http://localhost:${PORT}`,
+        ANTHROPIC_API_KEY: "dummy",
+      },
+    },
+    "Claude Code usage",
+  );
 });
