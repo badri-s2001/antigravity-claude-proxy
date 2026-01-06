@@ -6,9 +6,20 @@
 
 import path from "path";
 import os from "os";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import app from "../../server.js";
 import { DEFAULT_PORT } from "../../constants.js";
 import { getLogger } from "../../utils/logger-new.js";
+import { banner } from "../ui.js";
+
+// Get version from package.json
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = join(__dirname, "..", "..", "..", "package.json");
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as { version: string };
+const VERSION = packageJson.version;
 
 /**
  * Command options for the start command.
@@ -29,6 +40,9 @@ export interface StartCommandOptions {
 export function startCommand(options: StartCommandOptions): void {
   const logger = getLogger();
   const port = options.port ?? DEFAULT_PORT;
+
+  // Show banner
+  console.log(banner("Antigravity Claude Proxy", VERSION));
 
   // Home directory for account storage (for logging)
   const configDir = path.join(os.homedir(), ".antigravity-claude-proxy");
