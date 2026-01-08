@@ -8,14 +8,28 @@ import express from 'express';
 import cors from 'cors';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas } from './cloudcode/index.js';
 import { forceRefresh } from './auth/token-extractor.js';
-import { REQUEST_BODY_LIMIT } from './constants.js';
+import { REQUEST_BODY_LIMIT, MODEL_FALLBACK_MAP } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 
-// Parse fallback flag directly from command line args to avoid circular dependency
+// Parse flags directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
 const FALLBACK_ENABLED = args.includes('--fallback') || process.env.FALLBACK === 'true';
+const MODEL_CHAIN_ENABLED = args.includes('--models') || process.env.MODEL_CHAIN === 'true';
+
+// Model priority chain for --models mode
+const MODEL_CHAIN = [
+    'claude-opus-4-5-thinking',
+    'gemini-3-pro-high',
+    'gemini-3-pro-image',
+    'gemini-3-flash'
+];
+
+if (MODEL_CHAIN_ENABLED) {
+    console.log('\x1b[36m[Server] Model chain mode ENABLED - using priority fallback\x1b[0m');
+    console.log('\x1b[36m[Server] Chain order:', MODEL_CHAIN.join(' -> '), '\x1b[0m');
+}
 
 const app = express();
 
@@ -540,12 +554,29 @@ app.post('/v1/messages', async (req, res) => {
             temperature
         } = req.body;
 
-        // Optimistic Retry: If ALL accounts are rate-limited for this model, reset them to force a fresh check.
-        // If we have some available accounts, we try them first.
-        const modelId = model || 'claude-3-5-sonnet-20241022';
-        if (accountManager.isAllRateLimited(modelId)) {
-            logger.warn(`[Server] All accounts rate-limited for ${modelId}. Resetting state for optimistic retry.`);
-            accountManager.resetAllRateLimits();
+        // Determine target model based on model chain mode
+        const requestedModel = model || 'claude-3-5-sonnet-20241022';
+        let targetModel;
+
+        if (MODEL_CHAIN_ENABLED) {
+            // Model chain mode: Start with highest priority model
+            targetModel = MODEL_CHAIN[0];
+            logger.info(`[API] Model chain enabled: overriding ${requestedModel} -> ${targetModel}`);
+
+            // Optimistic Retry: If ALL accounts are rate-limited, reset for fresh check
+            if (accountManager.isAllRateLimited(targetModel)) {
+                logger.warn(`[Server] All accounts rate-limited for ${targetModel}. Resetting for optimistic retry.`);
+                accountManager.resetAllRateLimits();
+            }
+        } else {
+            // Normal mode: Use the requested model
+            targetModel = requestedModel;
+
+            // Optimistic Retry: If ALL accounts are rate-limited for this model, reset them
+            if (accountManager.isAllRateLimited(targetModel)) {
+                logger.warn(`[Server] All accounts rate-limited for ${targetModel}. Resetting state for optimistic retry.`);
+                accountManager.resetAllRateLimits();
+            }
         }
 
         // Validate required fields
@@ -561,7 +592,7 @@ app.post('/v1/messages', async (req, res) => {
 
         // Build the request object
         const request = {
-            model: model || 'claude-3-5-sonnet-20241022',
+            model: targetModel,
             messages,
             max_tokens: max_tokens || 4096,
             stream,
@@ -574,7 +605,7 @@ app.post('/v1/messages', async (req, res) => {
             temperature
         };
 
-        logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);
+        logger.info(`[API] Request: model=${targetModel}${MODEL_CHAIN_ENABLED ? ' (chain mode)' : ''}, stream=${!!stream}`);
 
         // Debug: Log message structure to diagnose tool_use/tool_result ordering
         if (logger.isDebugEnabled) {

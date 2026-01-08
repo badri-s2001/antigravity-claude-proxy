@@ -26,12 +26,16 @@ USAGE:
 
 COMMANDS:
   start                 Start the proxy server (default port: 8080)
+  start --models        Start with model chain fallback enabled
   accounts              Manage Google accounts (interactive)
   accounts add          Add a new Google account via OAuth
   accounts list         List all configured accounts
   accounts remove       Remove accounts interactively
   accounts verify       Verify account tokens are valid
   accounts clear        Remove all accounts
+  models                Configure model priority chain (interactive)
+  models list           Show current model chain
+  models reset          Reset model chain to default
 
 OPTIONS:
   --help, -h            Show this help message
@@ -85,6 +89,14 @@ async function main() {
       const subCommand = args[1] || 'add';
       process.argv = ['node', 'accounts-cli.js', subCommand, ...args.slice(2)];
       await import('../src/cli/accounts.js');
+      break;
+    }
+
+    case 'models': {
+      // Pass remaining args to models CLI
+      const subCommand = args[1] || 'menu';
+      process.argv = ['node', 'models-cli.js', subCommand, ...args.slice(2)];
+      await import('../src/cli/models.js');
       break;
     }
 
