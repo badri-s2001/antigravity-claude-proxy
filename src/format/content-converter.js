@@ -35,6 +35,7 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
     }
 
     const parts = [];
+    const deferredImages = []; // Collect images to add at the end to avoid interleaving
 
     for (const block of content) {
         if (!block) continue;
@@ -152,8 +153,9 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
 
             parts.push({ functionResponse });
 
-            // Add any images from the tool result as separate parts
-            parts.push(...imageParts);
+            // Defer images to the end to avoid interleaving with functionResponse blocks
+            // This prevents breaking Claude's "immediately after" requirement for tool_use/tool_result
+            deferredImages.push(...imageParts);
         } else if (block.type === 'thinking') {
             // Handle thinking blocks with signature compatibility check
             if (block.signature && block.signature.length >= MIN_SIGNATURE_LENGTH) {
@@ -181,6 +183,12 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
             }
             // Unsigned thinking blocks are dropped (existing behavior)
         }
+    }
+
+    // Flush all deferred images at the end of user message parts
+    // This keeps functionResponse blocks together and images after them
+    if (deferredImages.length > 0) {
+        parts.push(...deferredImages);
     }
 
     return parts;
