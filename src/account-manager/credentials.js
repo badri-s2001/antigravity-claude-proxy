@@ -15,6 +15,7 @@ import { refreshAccessToken } from '../auth/oauth.js';
 import { getAuthStatus } from '../auth/database.js';
 import { logger } from '../utils/logger.js';
 import { isNetworkError } from '../utils/helpers.js';
+import { recordTokenIssued } from '../utils/proactive-token-refresh.js';
 
 /**
  * Get OAuth token for an account
@@ -41,12 +42,26 @@ export async function getTokenForAccount(account, tokenCache, onInvalid, onSave)
         try {
             const tokens = await refreshAccessToken(account.refreshToken);
             token = tokens.accessToken;
+
+            // Record token expiry for proactive refresh (Remediation 2026-01)
+            // This enables background refresh before token expires
+            if (tokens.expiresIn) {
+                recordTokenIssued(account.email, tokens.expiresIn);
+                logger.debug(`[AccountManager] Token expires in ${tokens.expiresIn}s for: ${account.email}`);
+            }
+
             // Clear invalid flag on success
             if (account.isInvalid) {
                 account.isInvalid = false;
                 account.invalidReason = null;
-                if (onSave) await onSave();
             }
+
+            // Record last successful refresh time
+            account.lastTokenRefresh = Date.now();
+
+            // Always save after successful refresh to persist state
+            if (onSave) await onSave();
+
             logger.success(`[AccountManager] Refreshed OAuth token for: ${account.email}`);
         } catch (error) {
             // Check if it's a transient network error

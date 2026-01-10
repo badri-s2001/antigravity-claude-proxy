@@ -2,6 +2,13 @@
  * Express Server - Anthropic-compatible API
  * Proxies to Google Cloud Code via Antigravity
  * Supports multi-account load balancing
+ *
+ * Security Features (Remediation 2026-01):
+ * - Input validation with prototype pollution protection
+ * - Error message sanitization
+ * - Request timeouts
+ * - Graceful shutdown
+ * - Proactive token refresh
  */
 
 import express from 'express';
@@ -20,6 +27,12 @@ import { AccountManager } from './account-manager/index.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
+
+// Security utilities (Remediation 2026-01)
+import { validateMessages } from './utils/validators.js';
+import { createSafeErrorResponse, sanitizeAccountForResponse, sanitizeErrorMessage } from './utils/error-sanitizer.js';
+import { setupGracefulShutdown, onShutdown } from './utils/graceful-shutdown.js';
+import { startBackgroundRefresh, stopBackgroundRefresh } from './utils/proactive-token-refresh.js';
 
 // Parse fallback flag directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
@@ -50,6 +63,11 @@ async function ensureInitialized() {
             isInitialized = true;
             const status = accountManager.getStatus();
             logger.success(`[Server] Account pool initialized: ${status.summary}`);
+
+            // Start background token refresh (Remediation 2026-01)
+            // Proactively refreshes tokens before they expire to prevent mid-stream failures
+            startBackgroundRefresh(accountManager);
+            logger.info('[Server] Background token refresh monitoring started');
         } catch (error) {
             initError = error;
             initPromise = null; // Allow retry on failure
@@ -64,6 +82,24 @@ async function ensureInitialized() {
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
+
+// Security headers (Remediation 2026-01)
+// These provide basic protection against common web vulnerabilities
+app.use((req, res, next) => {
+    // Prevent clickjacking
+    res.setHeader('X-Frame-Options', 'DENY');
+    // Prevent MIME-type sniffing
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Enable XSS filter in older browsers
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    // Basic Content Security Policy
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'");
+    // Referrer policy
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // Permissions policy (formerly Feature-Policy)
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+});
 
 // Setup usage statistics middleware
 usageStats.setupMiddleware(app);
@@ -200,19 +236,27 @@ app.get('/health', async (req, res) => {
             })
         );
 
-        // Process results
+        // Process results - sanitize account info for external consumption
         const detailedAccounts = accountDetails.map((result, index) => {
-            if (result.status === 'fulfilled') {
-                return result.value;
-            } else {
-                const acc = allAccounts[index];
-                return {
-                    email: acc.email,
-                    status: 'error',
-                    error: result.reason?.message || 'Unknown error',
-                    modelRateLimits: acc.modelRateLimits || {}
-                };
-            }
+            const acc = allAccounts[index];
+            const baseData = result.status === 'fulfilled' ? result.value : {
+                email: acc.email,
+                status: 'error',
+                error: result.reason?.message || 'Unknown error',
+                modelRateLimits: acc.modelRateLimits || {}
+            };
+
+            // Sanitize account data - always mask emails in public /health endpoint
+            const sanitized = sanitizeAccountForResponse(acc, {
+                includeEmail: false, // Always mask for public endpoint
+                includeQuota: true
+            });
+            return {
+                ...baseData,
+                // Override email with sanitized version
+                email: sanitized.displayName,
+                id: sanitized.id
+            };
         });
 
         res.json({
@@ -231,11 +275,8 @@ app.get('/health', async (req, res) => {
 
     } catch (error) {
         logger.error('[API] Health check failed:', error);
-        res.status(503).json({
-            status: 'error',
-            error: error.message,
-            timestamp: new Date().toISOString()
-        });
+        const { statusCode, response } = createSafeErrorResponse(error);
+        res.status(statusCode).json(response);
     }
 });
 
@@ -512,25 +553,75 @@ app.get('/account-limits', async (req, res) => {
 
 /**
  * Force token refresh endpoint
+ * Security: Token prefix no longer exposed in response
+ * Remediation 2026-01: Now refreshes all OAuth accounts, not just legacy token
  */
 app.post('/refresh-token', async (req, res) => {
     try {
         await ensureInitialized();
-        // Clear all caches
+
+        // Clear all caches first
         accountManager.clearTokenCache();
         accountManager.clearProjectCache();
-        // Force refresh default token
-        const token = await forceRefresh();
+
+        // Get all OAuth accounts
+        const allAccounts = accountManager.getAllAccounts();
+        const oauthAccounts = allAccounts.filter(a => a.source === 'oauth' && a.refreshToken);
+
+        let succeeded = 0;
+        let failed = 0;
+        const details = [];
+
+        if (oauthAccounts.length > 0) {
+            // Refresh all OAuth accounts in parallel
+            const results = await Promise.allSettled(
+                oauthAccounts.map(async (account) => {
+                    try {
+                        await accountManager.getTokenForAccount(account);
+                        return { email: account.email, status: 'ok' };
+                    } catch (error) {
+                        return { email: account.email, status: 'error', error: error.message };
+                    }
+                })
+            );
+
+            for (const result of results) {
+                if (result.status === 'fulfilled') {
+                    const r = result.value;
+                    if (r.status === 'ok') {
+                        succeeded++;
+                        details.push({ account: sanitizeAccountForResponse(oauthAccounts.find(a => a.email === r.email), { includeEmail: false }).displayName, status: 'refreshed' });
+                    } else {
+                        failed++;
+                        details.push({ account: sanitizeAccountForResponse(oauthAccounts.find(a => a.email === r.email), { includeEmail: false }).displayName, status: 'failed' });
+                    }
+                } else {
+                    failed++;
+                }
+            }
+        }
+
+        // Also refresh legacy Antigravity token if available
+        try {
+            await forceRefresh();
+            succeeded++;
+            details.push({ account: 'legacy', status: 'refreshed' });
+        } catch (legacyError) {
+            // Legacy token refresh is optional
+            logger.debug('[API] Legacy token refresh skipped:', legacyError.message);
+        }
+
+        logger.info(`[API] Token refresh complete: ${succeeded} succeeded, ${failed} failed`);
+
         res.json({
-            status: 'ok',
-            message: 'Token caches cleared and refreshed',
-            tokenPrefix: token.substring(0, 10) + '...'
+            status: succeeded > 0 ? 'ok' : 'error',
+            message: `Refreshed ${succeeded} accounts${failed > 0 ? `, ${failed} failed` : ''}`,
+            timestamp: new Date().toISOString(),
+            details: details.length > 0 ? details : undefined
         });
     } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            error: error.message
-        });
+        const { statusCode, response } = createSafeErrorResponse(error);
+        res.status(statusCode).json(response);
     }
 });
 
@@ -592,6 +683,20 @@ app.post('/v1/messages', async (req, res) => {
         // Ensure account manager is initialized
         await ensureInitialized();
 
+        // === Input Validation (Security Remediation 2026-01) ===
+        // Validates request structure, model whitelist, and blocks prototype pollution
+        const validation = validateMessages(req.body);
+        if (!validation.valid) {
+            logger.warn(`[API] Validation failed: ${validation.errors[0]}`);
+            return res.status(400).json({
+                type: 'error',
+                error: {
+                    type: 'invalid_request_error',
+                    message: validation.errors[0]
+                }
+            });
+        }
+
         const {
             model,
             messages,
@@ -604,7 +709,7 @@ app.post('/v1/messages', async (req, res) => {
             top_p,
             top_k,
             temperature
-        } = req.body;
+        } = validation.data; // Use validated/sanitized data
 
         // Resolve model mapping if configured
         let requestedModel = model || 'claude-3-5-sonnet-20241022';
@@ -622,17 +727,6 @@ app.post('/v1/messages', async (req, res) => {
         if (accountManager.isAllRateLimited(modelId)) {
             logger.warn(`[Server] All accounts rate-limited for ${modelId}. Resetting state for optimistic retry.`);
             accountManager.resetAllRateLimits();
-        }
-
-        // Validate required fields
-        if (!messages || !Array.isArray(messages)) {
-            return res.status(400).json({
-                type: 'error',
-                error: {
-                    type: 'invalid_request_error',
-                    message: 'messages is required and must be an array'
-                }
-            });
         }
 
         // Build the request object
@@ -705,16 +799,44 @@ app.post('/v1/messages', async (req, res) => {
 
         let { errorType, statusCode, errorMessage } = parseError(error);
 
-        // For auth errors, try to refresh token
+        // For auth errors, try to refresh the failing account's token (Remediation 2026-01)
         if (errorType === 'authentication_error') {
-            logger.warn('[API] Token might be expired, attempting refresh...');
+            logger.warn('[API] Token authentication failed, attempting account refresh...');
             try {
-                accountManager.clearProjectCache();
-                accountManager.clearTokenCache();
-                await forceRefresh();
-                errorMessage = 'Token was expired and has been refreshed. Please retry your request.';
+                // Get all OAuth accounts that need refresh
+                const allAccounts = accountManager.getAllAccounts();
+                const oauthAccounts = allAccounts.filter(a => a.source === 'oauth' && a.refreshToken);
+
+                if (oauthAccounts.length > 0) {
+                    // Clear caches for all OAuth accounts
+                    for (const account of oauthAccounts) {
+                        accountManager.clearTokenCache(account.email);
+                        accountManager.clearProjectCache(account.email);
+                    }
+
+                    // Try to refresh each OAuth account
+                    const results = await Promise.allSettled(
+                        oauthAccounts.map(a => accountManager.getTokenForAccount(a))
+                    );
+
+                    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+                    const failed = results.filter(r => r.status === 'rejected').length;
+
+                    if (succeeded > 0) {
+                        errorMessage = `Authentication refreshed (${succeeded}/${oauthAccounts.length} accounts). Please retry your request.`;
+                        logger.success(`[API] Refreshed ${succeeded} OAuth tokens`);
+                    } else {
+                        errorMessage = `All ${failed} accounts failed to refresh. Re-authentication required via 'npm run accounts'.`;
+                        logger.error(`[API] All ${failed} OAuth accounts failed to refresh`);
+                    }
+                } else {
+                    // Fall back to legacy Antigravity database token refresh
+                    await forceRefresh();
+                    errorMessage = 'Token was expired and has been refreshed. Please retry your request.';
+                }
             } catch (refreshError) {
-                errorMessage = 'Could not refresh token. Make sure Antigravity is running.';
+                logger.error('[API] Token refresh failed:', refreshError.message);
+                errorMessage = 'Could not refresh token. Re-authentication required via \'npm run accounts\'.';
             }
         }
 

@@ -1,6 +1,10 @@
 /**
  * Antigravity Claude Proxy
  * Entry point - starts the proxy server
+ *
+ * Security Features (Remediation 2026-01):
+ * - Graceful shutdown with connection tracking
+ * - Background token refresh (proactive, not reactive)
  */
 
 import app from './server.js';
@@ -8,6 +12,10 @@ import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
 import path from 'path';
 import os from 'os';
+
+// Security utilities (Remediation 2026-01)
+import { setupGracefulShutdown, onShutdown } from './utils/graceful-shutdown.js';
+import { startBackgroundRefresh, stopBackgroundRefresh } from './utils/proactive-token-refresh.js';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -34,7 +42,8 @@ const PORT = process.env.PORT || DEFAULT_PORT;
 const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, '.antigravity-claude-proxy');
 
-app.listen(PORT, () => {
+// Start server and capture the instance for graceful shutdown
+const server = app.listen(PORT, () => {
     // Clear console for a clean start
     console.clear();
 
@@ -42,7 +51,7 @@ app.listen(PORT, () => {
     // align for 2-space indent (60 chars), align4 for 4-space indent (58 chars)
     const align = (text) => text + ' '.repeat(Math.max(0, 60 - text.length));
     const align4 = (text) => text + ' '.repeat(Math.max(0, 58 - text.length));
-    
+
     // Build Control section dynamically
     let controlSection = '║  Control:                                                    ║\n';
     if (!isDebug) {
@@ -99,9 +108,19 @@ ${border}    ${align4(`export ANTHROPIC_BASE_URL=http://localhost:${PORT}`)}${bo
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
   `);
-    
+
     logger.success(`Server started successfully on port ${PORT}`);
     if (isDebug) {
         logger.warn('Running in DEBUG mode - verbose logs enabled');
     }
+
+    // === Security: Set up graceful shutdown (Remediation 2026-01) ===
+    setupGracefulShutdown(server);
+
+    // Register cleanup callback for background token refresh
+    onShutdown('token-refresh', () => {
+        stopBackgroundRefresh();
+    });
+
+    logger.info('[Security] Graceful shutdown handlers registered');
 });
